@@ -3,7 +3,7 @@
   "displayName": "DevMind AI by SinghJitech",
   "description": "AI-powered inline autocomplete, code generation, bug fixing and chat by SinghJitech. Powered by DeepSeek.",
   "version": "1.0.0",
-  "publisher": "devmind",
+  "publisher": "DevmindAi",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["AI", "Other"],
   "keywords": ["ai", "autocomplete", "deepseek", "coding assistant"],
