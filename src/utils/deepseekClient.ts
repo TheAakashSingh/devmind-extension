@@ -100,13 +100,23 @@ export class DeepSeekClient {
 
   // ── Chat (sidebar) ─────────────────────────────────────────────────────────
   async chat(
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     language: string,
     onToken?: (t: string) => void
   ): Promise<string> {
+    const systemMessage = `You are an expert ${language} developer assistant inside VS Code. Rules:
+- When providing code, use markdown code blocks with proper syntax highlighting
+- Be concise and production-ready
+- You have access to the user's open files and can read/write files to disk when requested`;
+
+    const formattedMessages = [
+      { role: 'system' as const, content: systemMessage },
+      ...messages.filter(m => m.role !== 'system')
+    ];
+
     const res = await this.http.post('/v1/chat', {
       model:    MODEL_CHAT,
-      messages,
+      messages: formattedMessages,
       language,
       stream:   !!onToken,
     }, {
@@ -132,6 +142,24 @@ export class DeepSeekClient {
       res.data.on('end',   () => resolve(full));
       res.data.on('error', reject);
     });
+  }
+
+  // ── Read file content ───────────────────────────────────────────────────────
+  async readFile(path: string): Promise<string> {
+    const res = await this.http.post('/v1/files/read', { path });
+    return res.data.content ?? '';
+  }
+
+  // ── Write file to disk ──────────────────────────────────────────────────────
+  async writeFile(path: string, content: string): Promise<{ success: boolean; message: string }> {
+    const res = await this.http.post('/v1/files/write', { path, content });
+    return res.data;
+  }
+
+  // ── Search files ────────────────────────────────────────────────────────────
+  async searchFiles(query: string): Promise<Array<{ path: string; preview: string }>> {
+    const res = await this.http.post('/v1/files/search', { query });
+    return res.data.results ?? [];
   }
 
   // ── Validate key ───────────────────────────────────────────────────────────

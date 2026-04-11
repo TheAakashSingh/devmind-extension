@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: __CSP_SOURCE__; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob: __CSP_SOURCE__; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline';" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -207,8 +207,15 @@
     border: 1px solid rgba(248,113,113,.22);
     color: #fca5a5;
   }
-  .insert-btn {
+
+  /* ── Code blocks with actions ── */
+  .code-actions {
+    display: flex;
+    gap: 6px;
     margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .action-btn {
     height: 28px;
     padding: 0 12px;
     border: 1px solid rgba(74,222,128,.3);
@@ -224,22 +231,93 @@
     gap: 6px;
     transition: all 180ms var(--ease);
   }
-  .insert-btn:hover { background: rgba(74,222,128,.14); }
+  .action-btn:hover { background: rgba(74,222,128,.14); }
+  .action-btn.apply {
+    background: rgba(167,139,250,.12);
+    border-color: rgba(167,139,250,.3);
+    color: #c4b5fd;
+  }
+  .action-btn.apply:hover { background: rgba(167,139,250,.22); }
 
-  .typing {
-    display: inline-flex; gap: 4px;
+  /* ── Attachments panel ── */
+  .attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    min-height: 36px;
+  }
+  .attachment {
+    display: inline-flex;
     align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(96,165,250,.1);
+    border: 1px solid rgba(96,165,250,.25);
+    font-size: 11.5px;
+    color: #93c5fd;
   }
-  .typing span {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--muted);
-    animation: bounce 1.2s infinite ease-in-out;
+  .attachment img {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    object-fit: cover;
   }
-  .typing span:nth-child(2) { animation-delay: 0.15s; }
-  .typing span:nth-child(3) { animation-delay: 0.3s; }
-  @keyframes bounce {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30% { transform: translateY(-4px); opacity: 1; }
+  .attachment-remove {
+    width: 14px; height: 14px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    opacity: 0.7;
+  }
+  .attachment-remove:hover { opacity: 1; }
+
+  /* ── @ mention dropdown ── */
+  .mention-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-elev);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+    z-index: 100;
+  }
+  .mention-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 120ms var(--ease);
+  }
+  .mention-item:hover, .mention-item.selected {
+    background: rgba(255,255,255,.05);
+  }
+  .mention-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: rgba(167,139,250,.12);
+    color: var(--accent);
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+  }
+  .mention-name {
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .mention-path {
+    font-size: 11px;
+    color: var(--muted);
   }
 
   /* ── Composer ── */
@@ -247,6 +325,7 @@
     padding: 10px 12px 14px;
     background: var(--bg);
     border-top: 1px solid var(--line);
+    position: relative;
   }
   .composer {
     display: flex;
@@ -280,6 +359,22 @@
     align-items: center;
     gap: 8px;
   }
+  .composer-tools {
+    display: flex;
+    gap: 4px;
+  }
+  .tool-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 180ms var(--ease);
+  }
+  .tool-btn:hover { color: var(--text); background: var(--bg-card); border-color: var(--line-strong); }
   .composer-hint {
     font-size: 11px;
     color: var(--dim);
@@ -297,6 +392,23 @@
   }
   .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .send-btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+  /* ── Typing indicator ── */
+  .typing {
+    display: inline-flex; gap: 4px;
+    align-items: center;
+  }
+  .typing span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--muted);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
 
   /* ── Status footer ── */
   .status {
@@ -318,6 +430,69 @@
     background: var(--ok);
     box-shadow: 0 0 8px var(--ok);
   }
+  
+  /* ── File picker ── */
+  .file-picker {
+    position: absolute;
+    bottom: 100%;
+    right: 12px;
+    width: 280px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--bg-elev);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+    z-index: 100;
+  }
+  .file-picker-search {
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .file-picker-search input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .file-picker-search input:focus {
+    border-color: var(--accent);
+  }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 120ms var(--ease);
+  }
+  .file-item:hover {
+    background: rgba(255,255,255,.05);
+  }
+  .file-icon {
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    background: rgba(96,165,250,.12);
+    color: var(--accent-2);
+    display: grid;
+    place-items: center;
+  }
+  .file-name {
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .file-lang {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Hidden file input ── */
+  #file-input { display: none; }
 </style>
 </head>
 <body>
@@ -343,9 +518,19 @@
     <div class="messages" id="messages"></div>
 
     <div class="composer-wrap">
+      <div class="attachments" id="attachments" style="display:none;"></div>
+      
       <div class="composer">
-        <textarea id="input" rows="1" placeholder="Ask about the current file, plan a refactor, or generate code…"></textarea>
+        <textarea id="input" rows="1" placeholder="Ask about your code, or @ mention a file..."></textarea>
         <div class="composer-row">
+          <div class="composer-tools">
+            <button class="tool-btn" id="btn-attach" title="Attach file">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button class="tool-btn" id="btn-image" title="Attach image">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+          </div>
           <span class="composer-hint">⏎ to send · ⇧⏎ for newline</span>
           <button class="send-btn" id="send" title="Send">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -360,6 +545,9 @@
     </div>
   </div>
 
+  <input type="file" id="file-input" accept=".ts,.js,.tsx,.jsx,.json,.md,.css,.html,.py,.go,.rs,.java" multiple />
+  <input type="file" id="image-input" accept="image/*" multiple />
+
 <script>
 const vscode = acquireVsCodeApi();
 const hasApiKey = __HAS_API_KEY__;
@@ -368,8 +556,19 @@ const input = document.getElementById('input');
 const send = document.getElementById('send');
 const clearBtn = document.getElementById('btn-clear');
 const newBtn = document.getElementById('btn-new');
+const attachBtn = document.getElementById('btn-attach');
+const imageBtn = document.getElementById('btn-image');
+const fileInput = document.getElementById('file-input');
+const imageInput = document.getElementById('image-input');
+const attachmentsEl = document.getElementById('attachments');
+
 let currentBot = null;
 let sending = false;
+let attachments = [];
+let mentionShow = false;
+let mentionResults = [];
+let mentionIndex = -1;
+let lastInputPos = 0;
 
 function createSuggestion(title, desc, prompt) {
   const btn = document.createElement('button');
@@ -438,9 +637,32 @@ function addTyping() {
   return node;
 }
 
+function formatCodeActions(code, hasCode) {
+  if (!hasCode) return '';
+  return '<div class="code-actions">' +
+    '<button class="action-btn" onclick="insertCode(this)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Insert</button>' +
+    '<button class="action-btn apply" onclick="applyCode(this)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Apply</button>' +
+  '</div>';
+}
+
 function autoResize() {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+}
+
+function renderAttachments() {
+  if (attachments.length === 0) {
+    attachmentsEl.style.display = 'none';
+    attachmentsEl.innerHTML = '';
+    return;
+  }
+  attachmentsEl.style.display = 'flex';
+  attachmentsEl.innerHTML = attachments.map((att, i) => {
+    if (att.type === 'image') {
+      return '<div class="attachment"><img src="' + att.dataUrl + '" /><span>' + att.name + '</span><button class="attachment-remove" onclick="removeAttachment(' + i + ')">×</button></div>';
+    }
+    return '<div class="attachment"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' + att.name + '<button class="attachment-remove" onclick="removeAttachment(' + i + ')">×</button></div>';
+  }).join('');
 }
 
 function sendMessage() {
@@ -457,19 +679,160 @@ function sendMessage() {
   currentBot = addTyping();
   sending = true;
   send.disabled = true;
-  vscode.postMessage({ type: 'chat', text: text });
+  vscode.postMessage({ type: 'chat', text: text, attachments: attachments });
+  
+  attachments = [];
+  renderAttachments();
+}
+
+window.insertCode = function(btn) {
+  const msg = btn.closest('.msg.bot');
+  if (!msg) return;
+  const code = msg._body?.textContent || '';
+  vscode.postMessage({ type: 'insertCode', code });
+};
+
+window.applyCode = function(btn) {
+  const msg = btn.closest('.msg.bot');
+  if (!msg) return;
+  const code = msg._body?.textContent || '';
+  vscode.postMessage({ type: 'applyCode', code, filePath: '' });
+};
+
+window.removeAttachment = function(i) {
+  attachments.splice(i, 1);
+  renderAttachments();
+};
+
+function showMentionDropdown(results) {
+  mentionResults = results;
+  mentionIndex = -1;
+  
+  const existing = document.querySelector('.mention-dropdown');
+  if (existing) existing.remove();
+
+  if (results.length === 0) return;
+
+  const drop = document.createElement('div');
+  drop.className = 'mention-dropdown';
+  results.slice(0, 8).forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'mention-item';
+    item.innerHTML = '<span class="mention-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div><div class="mention-name">' + f.name + '</div><div class="mention-path">' + f.path + '</div></div>';
+    item.onclick = () => selectMention(f);
+    item.dataset.index = i;
+    drop.appendChild(item);
+  });
+  
+  document.querySelector('.composer-wrap').appendChild(drop);
+}
+
+function selectMention(file) {
+  const before = input.value.slice(0, lastInputPos);
+  const after = input.value.slice(input.selectionStart);
+  input.value = before + '@' + file.name + ' ' + after;
+  
+  const drop = document.querySelector('.mention-dropdown');
+  if (drop) drop.remove();
+  mentionShow = false;
+  
+  autoResize();
+  input.focus();
 }
 
 send.onclick = sendMessage;
 clearBtn.onclick = () => vscode.postMessage({ type: 'clear' });
 newBtn.onclick = () => vscode.postMessage({ type: 'clear' });
-input.addEventListener('input', autoResize);
+
+input.addEventListener('input', () => {
+  autoResize();
+  
+  const pos = input.selectionStart;
+  const before = input.value.slice(0, pos);
+  const lastAt = before.lastIndexOf('@');
+  
+  if (lastAt !== -1) {
+    const after = before.slice(lastAt + 1);
+    if (!after.includes(' ') && after.length > 0) {
+      mentionShow = true;
+      lastInputPos = lastAt;
+      vscode.postMessage({ type: 'searchFiles', query: after });
+    } else {
+      const drop = document.querySelector('.mention-dropdown');
+      if (drop) drop.remove();
+      mentionShow = false;
+    }
+  } else {
+    const drop = document.querySelector('.mention-dropdown');
+    if (drop) drop.remove();
+    mentionShow = false;
+  }
+});
+
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
+    if (mentionShow) {
+      const drop = document.querySelector('.mention-dropdown');
+      if (drop) {
+        e.preventDefault();
+        const items = drop.querySelectorAll('.mention-item');
+        if (items.length > 0) {
+          const selected = drop.querySelector('.mention-item.selected') || items[0];
+          selected.click();
+        }
+        return;
+      }
+    }
     e.preventDefault();
     sendMessage();
   }
+  
+  if (mentionShow) {
+    const drop = document.querySelector('.mention-dropdown');
+    if (drop) {
+      const items = Array.from(drop.querySelectorAll('.mention-item'));
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        mentionIndex = Math.min(mentionIndex + 1, items.length - 1);
+        items.forEach((it, i) => it.classList.toggle('selected', i === mentionIndex));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        mentionIndex = Math.max(mentionIndex - 1, 0);
+        items.forEach((it, i) => it.classList.toggle('selected', i === mentionIndex));
+      } else if (e.key === 'Enter' && mentionIndex >= 0) {
+        e.preventDefault();
+        items[mentionIndex].click();
+      } else if (e.key === 'Escape') {
+        drop.remove();
+        mentionShow = false;
+      }
+    }
+  }
 });
+
+attachBtn.onclick = () => fileInput.click();
+imageBtn.onclick = () => imageInput.click();
+
+fileInput.onchange = async () => {
+  for (const file of fileInput.files) {
+    const content = await file.text();
+    attachments.push({ type: 'file', name: file.name, content });
+  }
+  renderAttachments();
+  fileInput.value = '';
+};
+
+imageInput.onchange = async () => {
+  for (const file of imageInput.files) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      attachments.push({ type: 'image', name: file.name, dataUrl: reader.result });
+      renderAttachments();
+    };
+    reader.readAsDataURL(file);
+  }
+  imageInput.value = '';
+};
 
 window.addEventListener('message', (event) => {
   const message = event.data;
@@ -492,16 +855,14 @@ window.addEventListener('message', (event) => {
         const body = document.createElement('div');
         body.textContent = message.text;
         currentBot.appendChild(body);
+        currentBot._body = body;
       } else if (currentBot._body) {
         currentBot._body.textContent = message.text;
       }
 
-      if (/\`\`\`|function |const |class |interface |<\w+/.test(message.text)) {
-        const insert = document.createElement('button');
-        insert.className = 'insert-btn';
-        insert.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Insert into editor';
-        insert.onclick = () => vscode.postMessage({ type: 'insertCode', code: message.text });
-        currentBot.appendChild(insert);
+      const hasCode = message.hasCode;
+      if (hasCode) {
+        currentBot.innerHTML += formatCodeActions(message.text, hasCode);
       }
     }
     currentBot = null;
@@ -525,6 +886,14 @@ window.addEventListener('message', (event) => {
     document.getElementById('plan-text').textContent = message.hasApiKey
       ? String(message.plan).toUpperCase() + ' plan'
       : '';
+  }
+
+  if (message.type === 'searchResults' && mentionShow) {
+    showMentionDropdown(message.results);
+  }
+
+  if (message.type === 'applied') {
+    vscode.window.showInformationMessage(message.message);
   }
 });
 
