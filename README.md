@@ -1,7 +1,5 @@
 # DevMind AI by SinghJitech
 
-![DevMind AI logo](assets/logo.png)
-
 AI-powered coding assistant for VS Code with inline autocomplete, chat, code generation, bug fixing, and refactoring.
 
 ## Why DevMind AI
