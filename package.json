@@ -2,56 +2,149 @@
   "name": "devmind-ai",
   "displayName": "DevMind AI by SinghJitech",
   "description": "AI-powered inline autocomplete, code generation, bug fixing and chat by SinghJitech. Powered by DeepSeek.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "DevmindAi",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["AI", "Other"],
-  "keywords": ["ai", "autocomplete", "deepseek", "coding assistant"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "autocomplete",
+    "deepseek",
+    "coding assistant"
+  ],
   "icon": "assets/logo.png",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-      { "command": "devmind.explain", "title": "DevMind: Explain Code" },
-      { "command": "devmind.fix", "title": "DevMind: Fix Bug" },
-      { "command": "devmind.generate", "title": "DevMind: Generate Function" },
-      { "command": "devmind.refactor", "title": "DevMind: Refactor Code" },
-      { "command": "devmind.chat", "title": "DevMind: Open Chat" },
-      { "command": "devmind.setKey", "title": "DevMind: Set API Key" },
-      { "command": "devmind.openDashboard", "title": "DevMind: Open Dashboard" },
-      { "command": "devmind.openOnboarding", "title": "DevMind: Sign In" },
-      { "command": "devmind.signOut", "title": "DevMind: Sign Out" }
+      {
+        "command": "devmind.explain",
+        "title": "DevMind: Explain Code"
+      },
+      {
+        "command": "devmind.fix",
+        "title": "DevMind: Fix Bug"
+      },
+      {
+        "command": "devmind.generate",
+        "title": "DevMind: Generate Function"
+      },
+      {
+        "command": "devmind.refactor",
+        "title": "DevMind: Refactor Code"
+      },
+      {
+        "command": "devmind.chat",
+        "title": "DevMind: Open Chat"
+      },
+      {
+        "command": "devmind.setKey",
+        "title": "DevMind: Set API Key"
+      },
+      {
+        "command": "devmind.openDashboard",
+        "title": "DevMind: Open Dashboard"
+      },
+      {
+        "command": "devmind.openOnboarding",
+        "title": "DevMind: Sign In"
+      },
+      {
+        "command": "devmind.signOut",
+        "title": "DevMind: Sign Out"
+      }
     ],
     "keybindings": [
-      { "command": "devmind.explain", "key": "ctrl+shift+e", "mac": "cmd+shift+e", "when": "editorHasSelection" },
-      { "command": "devmind.fix", "key": "ctrl+shift+f", "mac": "cmd+shift+f", "when": "editorHasSelection" },
-      { "command": "devmind.generate", "key": "ctrl+shift+g", "mac": "cmd+shift+g" }
+      {
+        "command": "devmind.explain",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "devmind.fix",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "devmind.generate",
+        "key": "ctrl+shift+g",
+        "mac": "cmd+shift+g"
+      }
     ],
     "menus": {
       "editor/context": [
-        { "command": "devmind.explain", "group": "devmind@1", "when": "editorHasSelection" },
-        { "command": "devmind.fix", "group": "devmind@2", "when": "editorHasSelection" },
-        { "command": "devmind.refactor", "group": "devmind@3", "when": "editorHasSelection" }
+        {
+          "command": "devmind.explain",
+          "group": "devmind@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "devmind.fix",
+          "group": "devmind@2",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "devmind.refactor",
+          "group": "devmind@3",
+          "when": "editorHasSelection"
+        }
       ]
     },
     "viewsContainers": {
       "activitybar": [
-        { "id": "devmind-sidebar", "title": "DevMind AI by SinghJitech", "icon": "assets/logo.png" }
+        {
+          "id": "devmind-sidebar",
+          "title": "DevMind AI by SinghJitech",
+          "icon": "assets/logo.png"
+        }
       ]
     },
     "views": {
       "devmind-sidebar": [
-        { "type": "webview", "id": "devmind.chatView", "name": "Chat" }
+        {
+          "type": "webview",
+          "id": "devmind.chatView",
+          "name": "Chat"
+        }
       ]
     },
     "configuration": {
       "title": "DevMind AI by SinghJitech",
       "properties": {
-        "devmind.apiKey": { "type": "string", "description": "Your DevMind API key from the dashboard", "default": "" },
-        "devmind.serverUrl": { "type": "string", "description": "Backend server URL", "default": "https://api-devmind.singhjitech.com" },
-        "devmind.dashboardUrl": { "type": "string", "description": "Dashboard URL", "default": "https://app-devmind.singhjitech.com" },
-        "devmind.enableInline": { "type": "boolean", "description": "Enable inline autocomplete", "default": true },
-        "devmind.inlineDelay": { "type": "number", "description": "Autocomplete trigger delay (ms)", "default": 350 }
+        "devmind.apiKey": {
+          "type": "string",
+          "description": "Your DevMind API key from the dashboard",
+          "default": ""
+        },
+        "devmind.serverUrl": {
+          "type": "string",
+          "description": "Backend server URL",
+          "default": "https://api-devmind.singhjitech.com"
+        },
+        "devmind.dashboardUrl": {
+          "type": "string",
+          "description": "Dashboard URL",
+          "default": "https://app-devmind.singhjitech.com"
+        },
+        "devmind.enableInline": {
+          "type": "boolean",
+          "description": "Enable inline autocomplete",
+          "default": true
+        },
+        "devmind.inlineDelay": {
+          "type": "number",
+          "description": "Autocomplete trigger delay (ms)",
+          "default": 350
+        }
       }
     }
   },
