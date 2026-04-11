@@ -23,14 +23,6 @@
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
-  "files": [
-    "dist/**",
-    "assets/**",
-    "src/webview/**",
-    "node_modules/**",
-    "README.md",
-    "LICENSE"
-  ],
   "contributes": {
     "commands": [
       {
