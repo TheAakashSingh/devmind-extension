@@ -26,6 +26,7 @@
   "files": [
     "dist/**",
     "assets/**",
+    "src/webview/**",
     "node_modules/**",
     "README.md",
     "LICENSE"
