@@ -197,6 +197,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    // Filter out image attachments - DeepSeek doesn't support images yet
+    const fileAttachments = attachments.filter(a => a.type !== 'image');
+    const imageAttachments = attachments.filter(a => a.type === 'image');
+    
+    if (imageAttachments.length > 0) {
+      this.post({ type: 'warning', text: `Note: ${imageAttachments.length} image(s) will be ignored. Image support is coming soon!` });
+    }
+
     this.isStreaming = true;
     const { cleanText } = this.parseMentions(text);
     const language = vscode.window.activeTextEditor?.document.languageId || 'typescript';
@@ -205,14 +213,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     const fileContext = await this.getActiveFileContext();
     const projectContext = await this.getProjectContext();
-    const attachmentContext = this.buildContextMessage(attachments);
+    const attachmentContext = this.buildContextMessage(fileAttachments);
 
     let enhancedContent = cleanText;
     if (fileContext || projectContext || attachmentContext) {
       enhancedContent = `${cleanText}${projectContext}${fileContext}${attachmentContext}`;
     }
 
-    this.history.push({ role: 'user', content: enhancedContent, attachments, timestamp: Date.now() });
+    this.history.push({ role: 'user', content: enhancedContent, attachments: fileAttachments, timestamp: Date.now() });
 
     let reply = '';
     try {
