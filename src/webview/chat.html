@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: __CSP_SOURCE__; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline';" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a10;
+    --bg-elev: #0f0f17;
+    --bg-card: rgba(255,255,255,.03);
+    --line: rgba(255,255,255,.08);
+    --line-strong: rgba(255,255,255,.14);
+    --text: #f4f5fa;
+    --muted: #8a8fa3;
+    --dim: #5c6175;
+    --accent: #a78bfa;
+    --accent-2: #60a5fa;
+    --accent-3: #f0abfc;
+    --ok: #4ade80;
+    --danger: #f87171;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', var(--vscode-font-family, -apple-system, system-ui, sans-serif);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text);
+    background: var(--bg);
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-elev);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 9px;
+    font-weight: 700; font-size: 13.5px;
+    letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    background: rgba(255, 255, 255, .04) url('__LOGO_URI__') center/100% no-repeat;
+    color: transparent; font-size: 0; text-indent: -9999px; overflow: hidden;
+  }
+  .brand .sub {
+    font-size: 10.5px; font-weight: 500; color: var(--muted);
+    display: block; margin-top: 1px;
+  }
+  .header-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all 180ms var(--ease);
+  }
+  .icon-btn:hover { color: var(--text); background: var(--bg-card); border-color: var(--line-strong); }
+
+  /* ── Messages ── */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .messages::-webkit-scrollbar { width: 8px; }
+  .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,.06); border-radius: 4px; }
+  .messages::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.12); }
+
+  /* ── Welcome / auth gate ── */
+  .welcome {
+    padding: 22px 20px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(167,139,250,.08), rgba(96,165,250,.02));
+    border: 1px solid rgba(167,139,250,.2);
+    text-align: center;
+  }
+  .welcome h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+  .welcome p {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .welcome-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: all 180ms var(--ease);
+    text-decoration: none;
+    width: 100%;
+  }
+  .btn-primary {
+    background: #fff; color: #0a0a0f;
+    box-shadow: 0 1px 0 rgba(255,255,255,.2) inset;
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-ghost {
+    background: var(--bg-card); color: var(--text);
+    border-color: var(--line-strong);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.06); }
+
+  .suggestions {
+    display: grid;
+    gap: 8px;
+  }
+  .suggest {
+    padding: 11px 13px;
+    border-radius: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    color: #d5d7e0;
+    cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+    transition: all 180ms var(--ease);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .suggest:hover { border-color: var(--line-strong); background: rgba(255,255,255,.04); transform: translateY(-1px); }
+  .suggest-icon {
+    flex: 0 0 auto;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: rgba(167,139,250,.12);
+    color: var(--accent);
+    display: grid; place-items: center;
+  }
+  .suggest-title { font-weight: 600; font-size: 12.5px; }
+  .suggest-desc { color: var(--muted); font-size: 11.5px; }
+
+  /* ── Chat bubbles ── */
+  .msg {
+    max-width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 13.5px;
+  }
+  .msg.user {
+    align-self: flex-end;
+    max-width: 90%;
+    background: linear-gradient(135deg, rgba(167,139,250,.14), rgba(96,165,250,.1));
+    border: 1px solid rgba(167,139,250,.22);
+    border-bottom-right-radius: 5px;
+    color: #f4f5fa;
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 5px;
+    color: #d5d7e0;
+  }
+  .msg.bot .author {
+    display: flex; align-items: center; gap: 7px;
+    font-weight: 700; font-size: 11.5px; color: var(--accent);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .msg.bot .author-mark {
+    width: 16px; height: 16px; border-radius: 4px;
+    background: rgba(255, 255, 255, .04) url('__LOGO_URI__') center/100% no-repeat;
+    color: transparent; font-size: 0; text-indent: -9999px; overflow: hidden;
+    display: grid; place-items: center;
+  }
+  .msg.error {
+    align-self: stretch;
+    background: rgba(248,113,113,.08);
+    border: 1px solid rgba(248,113,113,.22);
+    color: #fca5a5;
+  }
+  .insert-btn {
+    margin-top: 10px;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid rgba(74,222,128,.3);
+    border-radius: 7px;
+    background: rgba(74,222,128,.08);
+    color: #86efac;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 180ms var(--ease);
+  }
+  .insert-btn:hover { background: rgba(74,222,128,.14); }
+
+  .typing {
+    display: inline-flex; gap: 4px;
+    align-items: center;
+  }
+  .typing span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--muted);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* ── Composer ── */
+  .composer-wrap {
+    padding: 10px 12px 14px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+  .composer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    transition: border-color 180ms var(--ease);
+  }
+  .composer:focus-within { border-color: var(--accent); }
+  textarea {
+    width: 100%;
+    min-height: 36px;
+    max-height: 140px;
+    resize: none;
+    padding: 6px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13.5px;
+    line-height: 1.5;
+    outline: none;
+  }
+  textarea::placeholder { color: var(--dim); }
+  .composer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .composer-hint {
+    font-size: 11px;
+    color: var(--dim);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .send-btn {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 0;
+    background: #fff;
+    color: #0a0a0f;
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: all 180ms var(--ease);
+  }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+  /* ── Status footer ── */
+  .status {
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--dim);
+    border-top: 1px solid var(--line);
+    background: var(--bg-elev);
+  }
+  .status .quota {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .quota-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="header">
+      <div class="brand">
+        <span class="brand-mark">D</span>
+        <span>
+          DevMind
+          <span class="sub">AI pair programmer</span>
+        </span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btn-new" title="New chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-clear" title="Clear conversation">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="Ask about the current file, plan a refactor, or generate code…"></textarea>
+        <div class="composer-row">
+          <span class="composer-hint">⏎ to send · ⇧⏎ for newline</span>
+          <button class="send-btn" id="send" title="Send">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="quota"><span class="quota-dot"></span> <span id="usage-text">Ready</span></span>
+      <span id="plan-text"></span>
+    </div>
+  </div>
+
+<script>
+const vscode = acquireVsCodeApi();
+const hasApiKey = __HAS_API_KEY__;
+const messages = document.getElementById('messages');
+const input = document.getElementById('input');
+const send = document.getElementById('send');
+const clearBtn = document.getElementById('btn-clear');
+const newBtn = document.getElementById('btn-new');
+let currentBot = null;
+let sending = false;
+
+function createSuggestion(title, desc, prompt) {
+  const btn = document.createElement('button');
+  btn.className = 'suggest';
+  btn.innerHTML = '<span class="suggest-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span><div><div class="suggest-title">' + title + '</div><div class="suggest-desc">' + desc + '</div></div>';
+  btn.onclick = () => {
+    input.value = prompt;
+    autoResize();
+    input.focus();
+  };
+  return btn;
+}
+
+function addWelcome() {
+  messages.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'welcome';
+
+  if (hasApiKey) {
+    wrap.innerHTML = '<h3>Ready when you are.</h3><p>Ask anything about your code, or pick a suggestion below to get started.</p>';
+    messages.appendChild(wrap);
+
+    const sugg = document.createElement('div');
+    sugg.className = 'suggestions';
+    sugg.style.marginTop = '14px';
+    sugg.appendChild(createSuggestion('Explain this file', 'Get a concise walkthrough', 'Explain what the current file does'));
+    sugg.appendChild(createSuggestion('Add error handling', 'Wrap calls safely', 'Add proper error handling to the current file'));
+    sugg.appendChild(createSuggestion('Write tests', 'Unit tests for the active code', 'Write unit tests for the current file'));
+    sugg.appendChild(createSuggestion('Refactor for clarity', 'Clean up naming + structure', 'Refactor this code for clarity and readability'));
+    messages.appendChild(sugg);
+  } else {
+    wrap.innerHTML = '<h3>Sign in to DevMind</h3><p>Create a free account in VS Code — no browser detour, no API keys to paste.</p><div class="welcome-actions"><button class="btn btn-primary" id="welcome-signin">Sign in</button><button class="btn btn-ghost" id="welcome-key">I have an API key</button></div>';
+    messages.appendChild(wrap);
+
+    document.getElementById('welcome-signin').onclick = () => vscode.postMessage({ type: 'openOnboarding' });
+    document.getElementById('welcome-key').onclick = () => vscode.postMessage({ type: 'setKey' });
+  }
+}
+
+function addMessage(kind, text) {
+  const node = document.createElement('div');
+  node.className = 'msg ' + kind;
+  if (kind === 'bot') {
+    const author = document.createElement('div');
+    author.className = 'author';
+    author.innerHTML = '<span class="author-mark">D</span> DevMind AI';
+    node.appendChild(author);
+    const body = document.createElement('div');
+    body.textContent = text;
+    node.appendChild(body);
+    node._body = body;
+  } else {
+    node.textContent = text;
+  }
+  messages.appendChild(node);
+  messages.scrollTop = messages.scrollHeight;
+  return node;
+}
+
+function addTyping() {
+  const node = document.createElement('div');
+  node.className = 'msg bot';
+  node.innerHTML = '<div class="author"><span class="author-mark">D</span> DevMind AI</div><div class="typing"><span></span><span></span><span></span></div>';
+  messages.appendChild(node);
+  messages.scrollTop = messages.scrollHeight;
+  return node;
+}
+
+function autoResize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+}
+
+function sendMessage() {
+  const text = input.value.trim();
+  if (!text || sending) return;
+
+  const welcomeEl = messages.querySelector('.welcome');
+  if (welcomeEl) messages.innerHTML = '';
+
+  addMessage('user', text);
+  input.value = '';
+  autoResize();
+
+  currentBot = addTyping();
+  sending = true;
+  send.disabled = true;
+  vscode.postMessage({ type: 'chat', text: text });
+}
+
+send.onclick = sendMessage;
+clearBtn.onclick = () => vscode.postMessage({ type: 'clear' });
+newBtn.onclick = () => vscode.postMessage({ type: 'clear' });
+input.addEventListener('input', autoResize);
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+window.addEventListener('message', (event) => {
+  const message = event.data;
+
+  if (message.type === 'token') {
+    if (currentBot) {
+      if (currentBot.querySelector('.typing')) {
+        currentBot.innerHTML = '<div class="author"><span class="author-mark">D</span> DevMind AI</div><div></div>';
+        currentBot._body = currentBot.querySelector('div:last-child');
+      }
+      if (currentBot._body) currentBot._body.textContent += message.text;
+      messages.scrollTop = messages.scrollHeight;
+    }
+  }
+
+  if (message.type === 'done') {
+    if (currentBot) {
+      if (currentBot.querySelector('.typing')) {
+        currentBot.innerHTML = '<div class="author"><span class="author-mark">D</span> DevMind AI</div>';
+        const body = document.createElement('div');
+        body.textContent = message.text;
+        currentBot.appendChild(body);
+      } else if (currentBot._body) {
+        currentBot._body.textContent = message.text;
+      }
+
+      if (/\`\`\`|function |const |class |interface |<\w+/.test(message.text)) {
+        const insert = document.createElement('button');
+        insert.className = 'insert-btn';
+        insert.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Insert into editor';
+        insert.onclick = () => vscode.postMessage({ type: 'insertCode', code: message.text });
+        currentBot.appendChild(insert);
+      }
+    }
+    currentBot = null;
+    sending = false;
+    send.disabled = false;
+  }
+
+  if (message.type === 'error') {
+    if (currentBot) { currentBot.remove(); currentBot = null; }
+    addMessage('error', message.text);
+    sending = false;
+    send.disabled = false;
+  }
+
+  if (message.type === 'cleared') addWelcome();
+
+  if (message.type === 'usage') {
+    document.getElementById('usage-text').textContent = message.hasApiKey
+      ? message.remaining + ' requests left today'
+      : 'Not signed in';
+    document.getElementById('plan-text').textContent = message.hasApiKey
+      ? String(message.plan).toUpperCase() + ' plan'
+      : '';
+  }
+});
+
+addWelcome();
+vscode.postMessage({ type: 'getUsage' });
+</script>
+<div style="padding:0 14px 12px;color:#77839b;font-size:11.5px;text-align:center;">Aakash Singh, Founder</div>
+</body>
+</html>
