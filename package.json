@@ -2,7 +2,7 @@
   "name": "devmind-ai",
   "displayName": "DevMind AI by SinghJitech",
   "description": "DevMind AI brings inline autocomplete, chat, code generation, bug fixing, and refactoring to VS Code.",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "publisher": "DevmindAi",
   "license": "MIT",
   "engines": {
