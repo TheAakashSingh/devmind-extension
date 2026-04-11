@@ -1,7 +1,7 @@
 {
   "name": "devmind-ai",
   "displayName": "DevMind AI by SinghJitech",
-  "description": "AI-powered inline autocomplete, code generation, bug fixing and chat by SinghJitech. Powered by DeepSeek.",
+  "description": "DevMind AI brings inline autocomplete, chat, code generation, bug fixing, and refactoring to VS Code.",
   "version": "1.0.4",
   "publisher": "DevmindAi",
   "license": "MIT",
@@ -14,9 +14,13 @@
   ],
   "keywords": [
     "ai",
+    "vscode",
     "autocomplete",
+    "chat",
     "deepseek",
-    "coding assistant"
+    "coding assistant",
+    "refactor",
+    "code generation"
   ],
   "icon": "assets/logo.png",
   "activationEvents": [
