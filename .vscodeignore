@@ -1,0 +1,12 @@
+.gitignore
+.vscode/**
+src/**
+tsconfig.json
+package-lock.json
+*.vsix
+*.log
+devmind-ai-*.vsix
+__pycache__/**
+*.pyc
+.DS_Store
+Thumbs.db
