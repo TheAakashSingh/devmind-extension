@@ -16,11 +16,13 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   attachments?: Attachment[];
+  timestamp?: number;
 }
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private history: ChatMessage[] = [];
+  private isStreaming = false;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -51,13 +53,19 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           this.insertIntoEditor(message.code);
           break;
         case 'applyCode':
-          await this.applyCodeToFile(message.code, message.filePath);
+          await this.applyCodeToFile(message.code, message.filePath, message.mode || 'insert');
+          break;
+        case 'replaceCode':
+          await this.replaceCodeInFile(message.code, message.filePath, message.oldCode);
           break;
         case 'getUsage':
           this.sendUsage();
           break;
         case 'getFiles':
           await this.sendOpenFiles();
+          break;
+        case 'getProjectContext':
+          await this.sendProjectContext();
           break;
         case 'searchFiles':
           await this.searchFilesHandler(message.query);
@@ -74,6 +82,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         case 'setKey':
           await vscode.commands.executeCommand('devmind.setKey');
           break;
+        case 'stopGeneration':
+          this.isStreaming = false;
+          break;
       }
     });
 
@@ -81,16 +92,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   refresh() {
-    if (!this.view) {
-      return;
-    }
+    if (!this.view) return;
     this.render();
   }
 
   private render() {
-    if (!this.view) {
-      return;
-    }
+    if (!this.view) return;
     this.view.webview.html = this.getHtml();
     this.sendUsage();
   }
@@ -109,32 +116,56 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     return { cleanText: cleanText.trim(), mentions };
   }
 
-  private async getFileContext(filePath: string): Promise<string> {
-    try {
-      const doc = await vscode.workspace.openTextDocument(filePath);
-      const content = doc.getText();
-      const ext = path.extname(filePath);
-      return `\n\nFile: ${filePath}\nLanguage: ${doc.languageId}\n\`\`\`${ext.slice(1)}\n${content}\n\`\`\``;
-    } catch {
-      return '';
-    }
-  }
-
   private async getActiveFileContext(): Promise<string> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return '';
 
     const doc = editor.document;
-    const fileName = doc.fileName;
+    const fileName = path.basename(doc.fileName);
     const language = doc.languageId;
     const content = doc.getText();
     const selection = editor.selection;
     const selectedCode = !selection.isEmpty ? doc.getText(selection) : '';
+    const cursorPosition = editor.selection.active;
 
-    let context = `\n\nActive file: ${fileName}\nLanguage: ${language}\n\`\`\`${language}\n${content}\n\`\`\``;
-
+    let context = `\n\n=== ACTIVE FILE: ${fileName} (${language}) ===\n`;
+    context += `Cursor: Line ${cursorPosition.line + 1}, Column ${cursorPosition.character + 1}\n`;
+    
     if (selectedCode) {
-      context += `\n\nSelected code:\n\`\`\`${language}\n${selectedCode}\n\`\`\``;
+      context += `\n--- Selected Code (lines ${selection.start.line + 1}-${selection.end.line + 1}) ---\n${selectedCode}\n`;
+    }
+    
+    context += `\n--- Full File Content ---\n${content}`;
+
+    return context;
+  }
+
+  private async getProjectContext(): Promise<string> {
+    const workspace = vscode.workspace.workspaceFolders?.[0];
+    if (!workspace) return '';
+
+    const rootPath = workspace.uri.fsPath;
+    const packageJsonPath = path.join(rootPath, 'package.json');
+    const tsconfigPath = path.join(rootPath, 'tsconfig.json');
+
+    let context = '\n\n=== PROJECT CONTEXT ===\n';
+
+    try {
+      if (fs.existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        context += `Project: ${packageJson.name || 'Unknown'}\n`;
+        context += `Type: ${packageJson.type || 'module'}\n`;
+        context += `Scripts: ${Object.keys(packageJson.scripts || {}).slice(0, 5).join(', ')}\n`;
+      }
+    } catch {}
+
+    const openFiles = vscode.workspace.textDocuments
+      .filter(d => !d.isUntitled)
+      .slice(0, 5)
+      .map(d => path.basename(d.fileName));
+    
+    if (openFiles.length > 0) {
+      context += `Open files: ${openFiles.join(', ')}\n`;
     }
 
     return context;
@@ -145,8 +176,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     
     for (const att of attachments) {
       if (att.type === 'file' && att.content) {
-        const ext = path.extname(att.name);
-        context += `\n\nFile: ${att.name}\n\`\`\`${ext.slice(1)}\n${att.content}\n\`\`\``;
+        const ext = path.extname(att.name).slice(1) || 'text';
+        context += `\n\n=== ATTACHED FILE: ${att.name} ===\n\`\`\`${ext}\n${att.content}\n\`\`\``;
+      } else if (att.type === 'image') {
+        context += `\n\n[Image attached: ${att.name}]`;
       }
     }
 
@@ -155,92 +188,122 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   private async handleChat(text: string, attachments: Attachment[]) {
     if (!this.hasApiKey()) {
-      this.post({
-        type: 'error',
-        text: 'Connect your DevMind account first. Use the dashboard to create an account, then paste your API key.',
-      });
+      this.post({ type: 'error', text: 'Connect your DevMind account first. Use the dashboard to create an account, then paste your API key.' });
       return;
     }
 
     if (!this.usage.canComplete()) {
-      this.post({
-        type: 'error',
-        text: 'Daily quota reached. Upgrade your plan in the DevMind dashboard to continue.',
-      });
+      this.post({ type: 'error', text: 'Daily quota reached. Upgrade your plan in the DevMind dashboard to continue.' });
       return;
     }
 
-    const { cleanText, mentions } = this.parseMentions(text);
+    this.isStreaming = true;
+    const { cleanText } = this.parseMentions(text);
     const language = vscode.window.activeTextEditor?.document.languageId || 'typescript';
 
+    this.post({ type: 'thinking', show: true });
+
     const fileContext = await this.getActiveFileContext();
+    const projectContext = await this.getProjectContext();
     const attachmentContext = this.buildContextMessage(attachments);
 
     let enhancedContent = cleanText;
-    if (fileContext || attachmentContext) {
-      enhancedContent = `${cleanText}${fileContext}${attachmentContext}`;
+    if (fileContext || projectContext || attachmentContext) {
+      enhancedContent = `${cleanText}${projectContext}${fileContext}${attachmentContext}`;
     }
 
-    this.history.push({ role: 'user', content: enhancedContent, attachments });
+    this.history.push({ role: 'user', content: enhancedContent, attachments, timestamp: Date.now() });
 
     let reply = '';
     try {
       reply = await this.client.chat(
         this.history.map(h => ({ role: h.role, content: h.content })),
         language,
-        (token: string) => this.post({ type: 'token', text: token })
+        (token: string) => {
+          if (this.isStreaming) {
+            this.post({ type: 'token', text: token });
+          }
+        }
       );
     } catch (error: any) {
+      this.post({ type: 'thinking', show: false });
       this.post({ type: 'error', text: error.message || 'Request failed.' });
       this.history.pop();
+      this.isStreaming = false;
       return;
     }
 
-    this.history.push({ role: 'assistant', content: reply });
+    this.isStreaming = false;
+    this.post({ type: 'thinking', show: false });
+    this.history.push({ role: 'assistant', content: reply, timestamp: Date.now() });
     this.post({ type: 'done', text: reply, hasCode: this.hasCodeBlock(reply) });
     this.usage.record();
     this.sendUsage();
   }
 
   private hasCodeBlock(text: string): boolean {
-    return /```|function |const |class |interface |export |import |=>|<\w+/.test(text);
+    return /```|function |const |class |interface |export |import |=>|<\w+|def |async |public |private/.test(text);
   }
 
   private clearChat() {
     this.history = [];
+    this.isStreaming = false;
     this.post({ type: 'cleared' });
   }
 
   private insertIntoEditor(code: string) {
     const editor = vscode.window.activeTextEditor;
     if (editor) {
-      editor.edit((builder) => builder.insert(editor.selection.active, code));
+      const extractedCode = this.extractCodeFromMarkdown(code);
+      editor.edit((builder) => builder.insert(editor.selection.active, extractedCode));
+      vscode.window.showInformationMessage('Code inserted at cursor');
     }
   }
 
-  private async applyCodeToFile(code: string, filePath?: string) {
-    if (filePath) {
-      try {
-        const safePath = vscode.workspace.asRelativePath(filePath);
-        const doc = await vscode.workspace.openTextDocument(safePath);
-        const fullDoc = await vscode.window.showTextDocument(doc);
-        const fullContent = doc.getText();
-        
-        const codeBlockMatch = code.match(/```(?:\w+)?\n([\s\S]*?)```/);
-        const extractedCode = codeBlockMatch ? codeBlockMatch[1].trim() : code;
+  private extractCodeFromMarkdown(code: string): string {
+    const codeBlockMatch = code.match(/```(?:\w+)?\n([\s\S]*?)```/);
+    if (codeBlockMatch) return codeBlockMatch[1].trim();
+    
+    const inlineCodeMatch = code.match(/`([^`]+)`/g);
+    if (inlineCodeMatch && inlineCodeMatch.length > 2) {
+      return code.replace(/`/g, '');
+    }
+    
+    return code.trim();
+  }
 
-        await fullDoc.edit((builder) => {
-          const start = new vscode.Position(0, 0);
-          const end = new vscode.Position(doc.lineCount, 0);
-          builder.replace(new vscode.Range(start, end), extractedCode);
-        });
-
-        this.post({ type: 'applied', message: `Applied to ${path.basename(filePath)}` });
-      } catch (e: any) {
-        this.post({ type: 'error', text: `Failed to apply: ${e.message}` });
+  private async applyCodeToFile(code: string, filePath?: string, mode: string = 'insert') {
+    try {
+      const extractedCode = this.extractCodeFromMarkdown(code);
+      
+      if (filePath && fs.existsSync(filePath)) {
+        const fullContent = fs.readFileSync(filePath, 'utf8');
+        fs.writeFileSync(filePath, fullContent + '\n\n' + extractedCode, 'utf8');
+        this.post({ type: 'applied', message: `Code appended to ${path.basename(filePath)}`, filePath });
+        vscode.window.showTextDocument(vscode.Uri.file(filePath));
+      } else {
+        this.insertIntoEditor(extractedCode);
       }
-    } else {
-      this.insertIntoEditor(code);
+    } catch (e: any) {
+      this.post({ type: 'error', text: `Failed to apply: ${e.message}` });
+    }
+  }
+
+  private async replaceCodeInFile(code: string, filePath: string, oldCode: string) {
+    try {
+      if (!fs.existsSync(filePath)) {
+        this.post({ type: 'error', text: 'File not found' });
+        return;
+      }
+
+      const fullContent = fs.readFileSync(filePath, 'utf8');
+      const newContent = fullContent.replace(oldCode, code);
+      
+      fs.writeFileSync(filePath, newContent, 'utf8');
+      this.post({ type: 'applied', message: `Code replaced in ${path.basename(filePath)}`, filePath });
+      vscode.window.showTextDocument(vscode.Uri.file(filePath));
+    } catch (e: any) {
+      this.post({ type: 'error', text: `Failed to replace: ${e.message}` });
     }
   }
 
@@ -269,6 +332,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.post({ type: 'files', files });
   }
 
+  private async sendProjectContext() {
+    const context = await this.getProjectContext();
+    const activeFile = await this.getActiveFileContext();
+    this.post({ type: 'projectContext', context: context + activeFile });
+  }
+
   private async searchFilesHandler(query: string) {
     try {
       const results = await this.client.searchFiles(query);
@@ -280,8 +349,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   private async readFileHandler(filePath: string) {
     try {
-      const doc = await vscode.workspace.openTextDocument(filePath);
-      const content = doc.getText();
+      const content = fs.readFileSync(filePath, 'utf8');
       this.post({ type: 'fileContent', path: filePath, content });
     } catch (e: any) {
       this.post({ type: 'error', text: `Failed to read: ${e.message}` });
