@@ -2,7 +2,7 @@
   "name": "devmind-ai",
   "displayName": "DevMind AI by SinghJitech",
   "description": "AI coding assistant — inline autocomplete, chat, project-aware generation, scaffolding, multi-file refactor & more. Powered by DeepSeek.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "publisher": "DevmindAi",
   "license": "MIT",
   "engines": {
