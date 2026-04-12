@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
 import { DeepSeekClient } from '../utils/deepseekClient';
-import { UsageTracker } from '../utils/usageTracker';
+import { UsageTracker }   from '../utils/usageTracker';
 
 export class InlineCompletionProvider implements vscode.InlineCompletionItemProvider {
-  private timer: NodeJS.Timeout | null = null;
-  private reqId  = 0;
-  private cache  = new Map<string, string>();
+  private timer:  NodeJS.Timeout | null = null;
+  private reqId = 0;
+  private cache = new Map<string, string>();
 
   constructor(
-    private client: DeepSeekClient,
-    private usage:  UsageTracker
+    private readonly client: DeepSeekClient,
+    private readonly usage:  UsageTracker
   ) {}
 
   async provideInlineCompletionItems(
@@ -19,23 +19,25 @@ export class InlineCompletionProvider implements vscode.InlineCompletionItemProv
     token: vscode.CancellationToken
   ): Promise<vscode.InlineCompletionList | null> {
     const cfg = vscode.workspace.getConfiguration('devmind');
-    if (!cfg.get<boolean>('enableInline', true)) return null;
-    if (!this.usage.canComplete())               return null;
+    if (!cfg.get<boolean>('enableInline', true)) { return null; }
+    if (!this.usage.canComplete())               { return null; }
 
+    // Debounce
     const delay = cfg.get<number>('inlineDelay', 350);
     await new Promise<void>(res => {
-      if (this.timer) clearTimeout(this.timer);
+      if (this.timer) { clearTimeout(this.timer); }
       this.timer = setTimeout(res, delay);
     });
-    if (token.isCancellationRequested) return null;
+    if (token.isCancellationRequested) { return null; }
 
+    // Skip very short lines
     const line = doc.lineAt(pos.line).text.trim();
-    if (line.length < 3) return null;
+    if (line.length < 3) { return null; }
 
-    const prefix = this.before(doc, pos, 50);
-    const suffix = this.after(doc, pos, 10);
-    const lang   = doc.languageId;
-    const file   = doc.fileName.split(/[\\/]/).pop() || '';
+    const prefix   = this.before(doc, pos, 50);
+    const suffix   = this.after(doc, pos, 10);
+    const lang     = doc.languageId;
+    const fileName = doc.fileName.split(/[\\/]/).pop() || '';
 
     const cacheKey = `${lang}:${prefix.slice(-300)}`;
     if (this.cache.has(cacheKey)) {
@@ -44,10 +46,11 @@ export class InlineCompletionProvider implements vscode.InlineCompletionItemProv
 
     const id = ++this.reqId;
     try {
-      const completion = await this.client.complete({ prefix, suffix, language: lang, fileName: file });
-      if (token.isCancellationRequested || id !== this.reqId) return null;
-      if (!completion.trim()) return null;
+      const completion = await this.client.complete({ prefix, suffix, language: lang, fileName });
+      if (token.isCancellationRequested || id !== this.reqId) { return null; }
+      if (!completion?.trim()) { return null; }
 
+      // Cache for 90 seconds
       this.cache.set(cacheKey, completion);
       setTimeout(() => this.cache.delete(cacheKey), 90_000);
 
@@ -58,11 +61,11 @@ export class InlineCompletionProvider implements vscode.InlineCompletionItemProv
     }
   }
 
-  private before(doc: vscode.TextDocument, pos: vscode.Position, n: number) {
+  private before(doc: vscode.TextDocument, pos: vscode.Position, n: number): string {
     return doc.getText(new vscode.Range(Math.max(0, pos.line - n), 0, pos.line, pos.character));
   }
 
-  private after(doc: vscode.TextDocument, pos: vscode.Position, n: number) {
+  private after(doc: vscode.TextDocument, pos: vscode.Position, n: number): string {
     return doc.getText(new vscode.Range(pos.line, pos.character, Math.min(doc.lineCount - 1, pos.line + n), 0));
   }
 
