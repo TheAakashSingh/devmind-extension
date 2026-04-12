@@ -2,922 +2,1068 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob: __CSP_SOURCE__; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline';" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #0d1117;
-    --bg-elev: #161b22;
-    --bg-hover: #21262d;
-    --border: #30363d;
-    --border-accent: #58a6ff;
-    --text: #e6edf3;
-    --text-muted: #8b949e;
-    --text-dim: #6e7681;
-    --accent: #58a6ff;
-    --accent-green: #3fb950;
-    --accent-purple: #a371f7;
-    --accent-orange: #f0883e;
-    --accent-red: #f85149;
-    --code-bg: #0d1117;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg);
-    height: 100vh;
-    overflow: hidden;
-  }
-  .shell { height: 100vh; display: flex; flex-direction: column; }
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
-  /* ── Header ── */
-  .header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
-    flex-shrink: 0;
-  }
-  .header-left { display: flex; align-items: center; gap: 10px; }
-  .logo {
-    width: 28px; height: 28px; border-radius: 6px;
-    background: linear-gradient(135deg, var(--accent-purple), var(--accent));
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 14px; color: #fff;
-  }
-  .brand { font-weight: 600; font-size: 14px; }
-  .brand span { display: block; font-size: 10px; font-weight: 400; color: var(--text-muted); }
-  .header-right { display: flex; align-items: center; gap: 8px; }
-  .header-btn {
-    width: 32px; height: 32px; border-radius: 6px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
-  }
-  .header-btn:hover { background: var(--bg-hover); color: var(--text); }
-  .profile-btn {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: var(--accent-purple);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 600; font-size: 12px; color: #fff;
-    cursor: pointer;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── Model selector ── */
-  .model-selector {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 16px;
-    background: var(--bg-elev);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .model-badge {
-    display: flex; align-items: center; gap: 6px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    font-size: 12px; font-weight: 500;
-    cursor: pointer;
-  }
-  .model-badge:hover { border-color: var(--text-muted); }
-  .model-badge svg { width: 14px; height: 14px; }
-  .model-name { color: var(--text); }
-  .quota-info { font-size: 11px; color: var(--text-dim); }
+:root {
+  --bg0: #0e0f11;
+  --bg1: #13151a;
+  --bg2: #1a1d24;
+  --bg3: #21252f;
+  --line: rgba(255,255,255,0.07);
+  --line2: rgba(255,255,255,0.12);
+  --txt: #e8eaf0;
+  --txt2: #8b909e;
+  --txt3: #555b6a;
+  --blue: #4f8ef7;
+  --blue2: #2563eb;
+  --blue-glow: rgba(79,142,247,0.15);
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --purple: #a78bfa;
+  --radius: 10px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
 
-  /* ── Messages ── */
-  .messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .messages::-webkit-scrollbar { width: 8px; }
-  .messages::-webkit-scrollbar-track { background: transparent; }
-  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  .messages::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+html, body { height: 100%; overflow: hidden; }
 
-  /* ── Welcome ── */
-  .welcome {
-    padding: 32px 24px;
-    text-align: center;
-  }
-  .welcome-icon {
-    width: 56px; height: 56px; margin: 0 auto 16px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, var(--accent-purple), var(--accent));
-    display: flex; align-items: center; justify-content: center;
-  }
-  .welcome-icon svg { width: 28px; height: 28px; color: #fff; }
-  .welcome h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-  .welcome p { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
-  .welcome-actions {
-    display: flex; gap: 8px; justify-content: center; margin-top: 20px;
-  }
-  .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 16px; border-radius: 8px;
-    font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: all 0.15s;
-    border: 1px solid transparent;
-  }
-  .btn-primary { background: #fff; color: #0d1117; }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,255,255,0.15); }
-  .btn-secondary { background: var(--bg-hover); color: var(--text); border-color: var(--border); }
-  .btn-secondary:hover { background: var(--border); }
+body {
+  font-family: var(--font);
+  font-size: 13px;
+  background: var(--bg0);
+  color: var(--txt);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
 
-  /* ── Suggestions ── */
-  .suggestions {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 24px;
-  }
-  .suggestion {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 12px; border-radius: 10px;
-    background: var(--bg-elev); border: 1px solid var(--border);
-    cursor: pointer; transition: all 0.15s;
-  }
-  .suggestion:hover { background: var(--bg-hover); border-color: var(--text-muted); }
-  .suggestion-icon {
-    width: 24px; height: 24px; flex-shrink: 0;
-    border-radius: 6px;
-    background: rgba(88,166,255,0.15);
-    color: var(--accent);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .suggestion-icon svg { width: 14px; height: 14px; }
-  .suggestion-text { text-align: left; }
-  .suggestion-title { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
-  .suggestion-desc { font-size: 11px; color: var(--text-muted); }
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 44px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
 
-  /* ── Chat Bubbles ── */
-  .msg { max-width: 100%; animation: fadeIn 0.3s ease-out; }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .msg.user {
-    display: flex; justify-content: flex-end;
-  }
-  .msg.user .msg-bubble {
-    max-width: 85%;
-    padding: 12px 16px;
-    border-radius: 12px;
-    background: var(--accent-purple);
-    color: #fff;
-    line-height: 1.5;
-  }
-  .msg.bot {
-    display: flex; gap: 12px;
-  }
-  .msg-bot-avatar {
-    width: 32px; height: 32px; flex-shrink: 0;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent-purple), var(--accent));
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 14px; color: #fff;
-    box-shadow: 0 2px 8px rgba(163,113,247,0.3);
-  }
-  .msg-bot-content { flex: 1; min-width: 0; }
-  .msg-bot-header {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 10px;
-  }
-  .msg-bot-name { font-weight: 600; font-size: 13px; }
-  .msg-bot-time { font-size: 11px; color: var(--text-dim); }
-  .msg-bubble {
-    padding: 16px;
-    border-radius: 14px;
-    background: var(--bg-elev);
-    border: 1px solid var(--border);
-    line-height: 1.6;
-  }
+.topbar-left { display: flex; align-items: center; gap: 8px; }
 
-  /* ── Code blocks ── */
-  .msg-content { font-size: 13px; line-height: 1.7; }
-  .msg-content p { margin-bottom: 12px; }
-  .msg-content p:last-child { margin-bottom: 0; }
-  .msg-content h1, .msg-content h2, .msg-content h3 {
-    font-size: 14px; font-weight: 600; margin: 16px 0 8px;
-  }
-  .msg-content ul, .msg-content ol { margin: 8px 0; padding-left: 20px; }
-  .msg-content li { margin: 4px 0; }
-  .msg-content code:not(pre code) {
-    padding: 2px 6px; border-radius: 4px;
-    background: rgba(110,118,129,0.2);
-    font-family: 'JetBrains Mono', monospace; font-size: 12px;
-  }
-  .code-block {
-    margin: 12px 0;
-    border-radius: 10px;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    overflow: hidden;
-  }
-  .code-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 12px;
-    background: rgba(255,255,255,0.03);
-    border-bottom: 1px solid var(--border);
-  }
-  .code-lang {
-    font-size: 11px; color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-  }
-  .code-actions {
-    display: flex; gap: 4px;
-  }
-  .code-action {
-    display: flex; align-items: center; gap: 4px;
-    padding: 4px 8px; border-radius: 4px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 11px; cursor: pointer;
-    transition: all 0.15s;
-  }
-  .code-action:hover { background: var(--bg-hover); color: var(--text); }
-  .code-action.success { color: var(--accent-green); border-color: rgba(63,185,80,0.3); }
-  .code-action svg { width: 12px; height: 12px; }
-  .code-block pre {
-    margin: 0; padding: 14px;
-    overflow-x: auto;
-  }
-  .code-block code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12.5px; line-height: 1.6; color: var(--text);
-    white-space: pre;
-  }
+.brand-mark {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  background: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.brand-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%);
+}
+.brand-mark svg { width: 14px; height: 14px; color: #fff; position: relative; z-index: 1; }
 
-  /* ── Attachments ── */
-  .msg-attachments {
-    display: flex; flex-wrap: wrap; gap: 8px;
-    margin-bottom: 12px;
-  }
-  .attachment {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    font-size: 12px;
-  }
-  .attachment svg { width: 14px; height: 14px; color: var(--text-muted); }
-  .attachment-image {
-    width: 80px; height: 80px;
-    border-radius: 8px;
-    object-fit: cover;
-    border: 1px solid var(--border);
-  }
+.brand-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--txt);
+}
 
-  /* ── Thinking indicator ── */
-  .thinking {
-    display: flex; align-items: center; gap: 8px;
-    padding: 12px 16px;
-    border-radius: 10px;
-    background: var(--bg-elev); border: 1px solid var(--border);
-  }
-  .thinking-dots {
-    display: flex; gap: 4px;
-  }
-  .thinking-dots span {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent);
-    animation: bounce 1.4s infinite ease-in-out;
-  }
-  .thinking-dots span:nth-child(2) { animation-delay: 0.16s; }
-  .thinking-dots span:nth-child(3) { animation-delay: 0.32s; }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-4px); }
-  }
-  .thinking-text { color: var(--text-muted); font-size: 12px; }
-  .stop-btn {
-    margin-left: auto;
-    padding: 4px 10px; border-radius: 4px;
-    border: 1px solid rgba(248,81,73,0.3);
-    background: rgba(248,81,73,0.1);
-    color: var(--accent-red);
-    font-size: 11px; cursor: pointer;
-  }
-  .stop-btn:hover { background: rgba(248,81,73,0.2); }
+.topbar-center {
+  display: flex; align-items: center; gap: 6px;
+}
 
-  /* ── Error & Warning ── */
-  .msg.error .msg-bubble {
-    background: rgba(248,81,73,0.1);
-    border-color: rgba(248,81,73,0.3);
-    color: var(--accent-red);
-  }
-  .msg.warning .msg-bubble {
-    background: rgba(240,136,62,0.1);
-    border-color: rgba(240,136,62,0.3);
-    color: var(--accent-orange);
-  }
+.model-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--txt2);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.model-pill:hover { border-color: var(--blue); color: var(--txt); }
+.model-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.model-caret { opacity: 0.5; font-size: 9px; }
 
-  /* ── Composer ── */
-  .composer {
-    padding: 16px;
-    background: var(--bg-elev);
-    border-top: 1px solid var(--border);
-    flex-shrink: 0;
-    position: relative;
-    z-index: 10;
-  }
-  .composer-attachments {
-    display: flex; flex-wrap: wrap; gap: 8px;
-    margin-bottom: 10px;
-    max-height: 100px;
-    overflow-y: auto;
-  }
-  .composer-attachments:empty {
-    display: none;
-  }
-  .composer-attachment {
-    display: flex; align-items: center; gap: 6px;
-    padding: 6px 10px; border-radius: 6px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    font-size: 11px;
-    max-width: 200px;
-  }
-  .composer-attachment span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .composer-attachment img {
-    width: 28px; height: 28px; border-radius: 4px; object-fit: cover;
-    flex-shrink: 0;
-  }
-  .composer-attachment button {
-    background: none; border: none; color: var(--text-muted);
-    cursor: pointer; padding: 0; flex-shrink: 0;
-  }
-  .composer-attachment button:hover { color: var(--accent-red); }
-  .composer-input-wrap {
-    display: flex; align-items: flex-end; gap: 10px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .composer-input-wrap:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
-  }
-  .composer-tools {
-    display: flex; gap: 2px;
-    flex-shrink: 0;
-  }
-  .tool-btn {
-    width: 28px; height: 28px; border-radius: 6px;
-    border: none; background: transparent;
-    color: var(--text-muted);
-    cursor: pointer; display: flex;
-    align-items: center; justify-content: center;
-    transition: all 0.15s;
-  }
-  .tool-btn:hover { background: var(--bg-hover); color: var(--text); }
-  .tool-btn svg { width: 16px; height: 16px; }
-  .composer-input {
-    flex: 1;
-    min-height: 20px;
-    max-height: 100px;
-    padding: 4px 0;
-    border: none; background: transparent;
-    color: var(--text);
-    font-family: inherit; font-size: 13px;
-    line-height: 1.5; resize: none;
-    outline: none;
-  }
-  .composer-input::placeholder { color: var(--text-dim); }
-  .send-btn {
-    width: 32px; height: 32px; border-radius: 8px;
-    border: none; background: var(--accent);
-    color: #fff;
-    cursor: pointer; display: flex;
-    align-items: center; justify-content: center;
-    transition: all 0.15s;
-  }
-  .send-btn:hover { background: #4393e6; }
-  .send-btn:disabled { background: var(--border); cursor: not-allowed; }
-  .send-btn svg { width: 16px; height: 16px; }
+.topbar-right { display: flex; align-items: center; gap: 4px; }
 
-  /* ── Footer ── */
-  .footer {
-    padding: 8px 16px;
-    border-top: 1px solid var(--border);
-    background: var(--bg-elev);
-    display: flex; justify-content: space-between;
-    font-size: 11px; color: var(--text-dim);
-    flex-shrink: 0;
-  }
+.icon-btn {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  border: none; background: transparent;
+  color: var(--txt3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.icon-btn:hover { background: var(--bg3); color: var(--txt2); }
+.icon-btn svg { width: 15px; height: 15px; }
 
-  /* ── Hidden inputs ── */
-  #file-input, #image-input { display: none; }
+.avatar-btn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--purple), var(--blue));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font);
+}
 
-  /* ── @ mention dropdown ── */
-  .mention-dropdown {
-    position: absolute;
-    bottom: 100%; left: 0; right: 0;
-    max-height: 200px; overflow-y: auto;
-    background: var(--bg-elev); border: 1px solid var(--border);
-    border-radius: 8px; margin-bottom: 8px;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
-  }
-  .mention-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; cursor: pointer;
-  }
-  .mention-item:hover { background: var(--bg-hover); }
-  .mention-icon {
-    width: 24px; height: 24px; border-radius: 4px;
-    background: rgba(163,113,247,0.15);
-    color: var(--accent-purple);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .mention-name { font-weight: 500; font-size: 13px; }
-  .mention-path { font-size: 11px; color: var(--text-muted); }
+/* ── CONTEXT BAR ── */
+.ctx-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.ctx-bar::-webkit-scrollbar { display: none; }
+
+.ctx-file {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--txt2);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctx-file:hover { border-color: var(--blue); color: var(--txt); }
+.ctx-file .ext { color: var(--blue); }
+
+.ctx-label {
+  font-size: 11px;
+  color: var(--txt3);
+  flex-shrink: 0;
+}
+
+.ctx-add {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px dashed var(--line2);
+  background: transparent;
+  color: var(--txt3);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.ctx-add:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── MESSAGES ── */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scroll-behavior: smooth;
+}
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+
+/* ── WELCOME ── */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  animation: fadeUp 0.4s ease-out;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-logo {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  background: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.welcome-logo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%);
+}
+.welcome-logo svg { width: 26px; height: 26px; color: #fff; position: relative; z-index: 1; }
+
+.welcome h2 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+.welcome p {
+  font-size: 12.5px;
+  color: var(--txt2);
+  line-height: 1.6;
+  max-width: 240px;
+  margin-bottom: 24px;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.qa-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.qa-item:hover {
+  background: var(--bg3);
+  border-color: var(--line2);
+  transform: translateX(2px);
+}
+.qa-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.qa-icon svg { width: 13px; height: 13px; }
+.qa-icon.blue { background: rgba(79,142,247,0.15); color: var(--blue); }
+.qa-icon.green { background: rgba(52,211,153,0.15); color: var(--green); }
+.qa-icon.amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+.qa-icon.purple { background: rgba(167,139,250,0.15); color: var(--purple); }
+
+.qa-text { flex: 1; min-width: 0; }
+.qa-title { font-size: 12.5px; font-weight: 500; }
+.qa-sub { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+
+.qa-arrow { color: var(--txt3); font-size: 12px; }
+
+/* ── MESSAGE ROWS ── */
+.msg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: msgIn 0.25s ease-out;
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-row.user {
+  align-items: flex-end;
+  margin: 6px 0;
+}
+.msg-row.bot {
+  align-items: flex-start;
+  margin: 6px 0;
+}
+
+/* User bubble */
+.user-bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 14px 14px 3px 14px;
+  background: var(--blue2);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+/* Bot row */
+.bot-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.bot-avatar {
+  width: 26px; height: 26px;
+  border-radius: 8px;
+  background: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  overflow: hidden;
+}
+.bot-avatar::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 60%);
+}
+.bot-avatar svg { width: 13px; height: 13px; color: #fff; position: relative; z-index: 1; }
+
+.bot-content { flex: 1; min-width: 0; }
+
+.bot-label {
+  font-size: 11px;
+  color: var(--txt3);
+  margin-bottom: 5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.bot-bubble {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 3px 14px 14px 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+/* Markdown content */
+.md p { margin-bottom: 10px; }
+.md p:last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3 { font-size: 13px; font-weight: 600; margin: 14px 0 6px; color: var(--txt); }
+.md ul, .md ol { padding-left: 18px; margin: 8px 0; }
+.md li { margin: 3px 0; color: var(--txt2); font-size: 12.5px; }
+.md code:not(pre code) {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--blue);
+}
+.md strong { font-weight: 600; color: var(--txt); }
+
+/* Code block */
+.code-wrap {
+  margin: 10px 0;
+  border-radius: 8px;
+  background: var(--bg0);
+  border: 1px solid var(--line2);
+  overflow: hidden;
+}
+.code-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.code-lang {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--blue);
+}
+.code-actions-row { display: flex; gap: 4px; }
+.code-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: none;
+  background: var(--bg3);
+  color: var(--txt3);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.code-btn:hover { color: var(--txt); background: var(--bg2); }
+.code-btn.ok { color: var(--green); }
+.code-btn svg { width: 11px; height: 11px; }
+.code-wrap pre { margin: 0; padding: 14px; overflow-x: auto; }
+.code-wrap code {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--txt);
+  white-space: pre;
+}
+
+/* Thinking */
+.thinking-row {
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.thinking-body {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-radius: 3px 14px 14px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+}
+.dots { display: flex; gap: 4px; }
+.dots span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--blue);
+  animation: pulse 1.4s ease-in-out infinite;
+  opacity: 0.6;
+}
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse {
+  0%, 60%, 100% { transform: scale(0.8); opacity: 0.4; }
+  30% { transform: scale(1.2); opacity: 1; }
+}
+.thinking-label { font-size: 12px; color: var(--txt2); }
+.stop-btn {
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(248,113,113,0.3);
+  background: rgba(248,113,113,0.08);
+  color: var(--red);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.stop-btn:hover { background: rgba(248,113,113,0.15); }
+
+/* Error */
+.err-bubble {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.2);
+  color: var(--red);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.err-bubble svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── COMPOSER ── */
+.composer {
+  background: var(--bg1);
+  border-top: 1px solid var(--line);
+  padding: 10px 12px 12px;
+  flex-shrink: 0;
+}
+
+.attachment-strip {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.attachment-strip:empty { display: none; }
+.att-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--txt2);
+}
+.att-chip button {
+  background: none; border: none; color: var(--txt3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  padding: 0 0 0 3px;
+  font-family: var(--font);
+}
+.att-chip button:hover { color: var(--red); }
+
+.composer-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+.composer-box:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(79,142,247,0.1);
+}
+
+.composer-left { display: flex; gap: 2px; }
+
+.c-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  border: none; background: transparent;
+  color: var(--txt3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.c-btn:hover { background: var(--bg3); color: var(--txt2); }
+.c-btn svg { width: 15px; height: 15px; }
+
+.c-input {
+  flex: 1;
+  min-height: 22px;
+  max-height: 120px;
+  padding: 4px 0;
+  border: none; background: transparent;
+  color: var(--txt);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+}
+.c-input::placeholder { color: var(--txt3); }
+
+.c-send {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  font-family: var(--font);
+  position: relative;
+  overflow: hidden;
+}
+.c-send::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 60%);
+}
+.c-send:hover { background: #3b7ef6; transform: scale(1.04); }
+.c-send:disabled { background: var(--bg3); cursor: not-allowed; transform: none; }
+.c-send svg { width: 14px; height: 14px; position: relative; z-index: 1; }
+
+.composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 7px;
+  padding: 0 2px;
+}
+.cfoot-left { display: flex; align-items: center; gap: 8px; }
+
+.slash-hint {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10.5px;
+  color: var(--txt3);
+}
+.slash-key {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--txt2);
+}
+
+.cfoot-right { font-size: 10.5px; color: var(--txt3); }
+
+/* ── MENTION DROPDOWN ── */
+.mention-drop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0; right: 0;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.4);
+  z-index: 100;
+}
+.mention-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.mention-item:hover { background: var(--bg3); }
+.mention-ext {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--blue); background: rgba(79,142,247,0.1);
+  padding: 2px 6px; border-radius: 3px;
+  flex-shrink: 0;
+}
+.mention-name { font-size: 12px; font-weight: 500; }
+.mention-path { font-size: 10.5px; color: var(--txt3); margin-top: 1px; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+
+#file-input, #image-input { display: none; }
 </style>
 </head>
 <body>
-  <div class="shell">
-    <!-- Header -->
-    <div class="header">
-      <div class="header-left">
-        <div class="logo">D</div>
-        <div class="brand">DevMind<span>AI Assistant</span></div>
-      </div>
-      <div class="header-right">
-        <button class="header-btn" id="btn-settings" title="Settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-        <button class="header-btn" id="btn-new" title="New Chat">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-        <div class="profile-btn" title="Profile">S</div>
-      </div>
-    </div>
 
-    <!-- Model selector -->
-    <div class="model-selector">
-      <div class="model-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        <span class="model-name">DevMind</span>
-      </div>
-      <span class="quota-info" id="quota-text">Ready</span>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
     </div>
-
-    <!-- Messages -->
-    <div class="messages" id="messages"></div>
-
-    <!-- Composer -->
-    <div class="composer">
-      <div class="composer-attachments" id="composer-attachments"></div>
-      <div class="composer-input-wrap">
-        <div class="composer-tools">
-          <button class="tool-btn" id="btn-attach" title="Attach file">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-          </button>
-          <button class="tool-btn" id="btn-image" title="Attach image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          </button>
-        </div>
-        <textarea class="composer-input" id="input" rows="1" placeholder="Ask anything about your code..."></textarea>
-        <button class="send-btn" id="send" title="Send">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-      <span>Aakash Singh, Founder</span>
-      <span id="plan-badge"></span>
-    </div>
+    <span class="brand-name">DevMind</span>
   </div>
 
-  <input type="file" id="file-input" accept=".ts,.js,.tsx,.jsx,.json,.md,.css,.html,.py,.go,.rs,.java" multiple />
-  <input type="file" id="image-input" accept="image/*" multiple />
+  <div class="topbar-center">
+    <button class="model-pill">
+      <span class="model-dot"></span>
+      AI
+      <span class="model-caret">▾</span>
+    </button>
+  </div>
+
+  <div class="topbar-right">
+    <button class="icon-btn" id="btn-history" title="History">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5M12 7v5l4 2"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="btn-new" title="New chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="btn-settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <button class="avatar-btn">A</button>
+  </div>
+</div>
+
+<!-- CONTEXT BAR -->
+<div class="ctx-bar" id="ctx-bar">
+  <span class="ctx-label">Context</span>
+  <div class="ctx-file"><span class="ext">ts</span> index.ts</div>
+  <div class="ctx-file"><span class="ext">json</span> package.json</div>
+  <button class="ctx-add">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Add file
+  </button>
+</div>
+
+<!-- MESSAGES -->
+<div class="messages" id="messages"></div>
+
+<!-- COMPOSER -->
+<div class="composer">
+  <div class="attachment-strip" id="attachment-strip"></div>
+  <div class="composer-box" id="composer-box">
+    <div class="composer-left">
+      <button class="c-btn" id="btn-attach" title="Attach file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <button class="c-btn" id="btn-image" title="Attach image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+      </button>
+    </div>
+    <textarea class="c-input" id="input" rows="1" placeholder="Ask DevMind anything… (@ to mention a file)"></textarea>
+    <button class="c-send" id="send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+  <div class="composer-footer">
+    <div class="cfoot-left">
+      <span class="slash-hint"><span class="slash-key">/</span> commands</span>
+      <span class="slash-hint"><span class="slash-key">@</span> files</span>
+    </div>
+    <span class="cfoot-right" id="usage-label">Ready</span>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".ts,.js,.tsx,.jsx,.json,.md,.css,.html,.py,.go,.rs,.java" multiple />
+<input type="file" id="image-input" accept="image/*" multiple />
 
 <script>
-const vscode = acquireVsCodeApi();
-const hasApiKey = __HAS_API_KEY__;
+// ── VS Code API stub for standalone preview ──
+const vscode = typeof acquireVsCodeApi !== 'undefined'
+  ? acquireVsCodeApi()
+  : { postMessage: (m) => console.log('[vscode]', m) };
 
-const messages = document.getElementById('messages');
-const input = document.getElementById('input');
-const send = document.getElementById('send');
-const attachBtn = document.getElementById('btn-attach');
-const imageBtn = document.getElementById('btn-image');
+const hasApiKey = typeof __HAS_API_KEY__ !== 'undefined' ? __HAS_API_KEY__ : true;
+
+// ── DOM refs ──
+const msgsEl    = document.getElementById('messages');
+const inputEl   = document.getElementById('input');
+const sendBtn   = document.getElementById('send');
 const fileInput = document.getElementById('file-input');
-const imageInput = document.getElementById('image-input');
-const composerAttachments = document.getElementById('composer-attachments');
-const quotaText = document.getElementById('quota-text');
-const planBadge = document.getElementById('plan-badge');
+const imgInput  = document.getElementById('image-input');
+const attStrip  = document.getElementById('attachment-strip');
+const usageLbl  = document.getElementById('usage-label');
+const composerBox = document.getElementById('composer-box');
 
-let currentBot = null;
 let sending = false;
+let currentBotRow = null;
 let attachments = [];
-let mentionShow = false;
-let mentionIndex = -1;
-let lastInputPos = 0;
+let mentionMode = false;
+let mentionStart = 0;
 
-// ── Suggestions ──
-function createSuggestion(title, desc, icon) {
-  const div = document.createElement('div');
-  div.className = 'suggestion';
-  div.innerHTML = `<div class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg></div><div class="suggestion-text"><div class="suggestion-title">${title}</div><div class="suggestion-desc">${desc}</div></div>`;
-  div.onclick = () => { input.value = desc; input.focus(); };
-  return div;
-}
-
-// ── Welcome screen ──
+// ── WELCOME ──
 function showWelcome() {
-  messages.innerHTML = '';
-  const welcome = document.createElement('div');
-  welcome.className = 'welcome';
-  
-  if (hasApiKey) {
-    welcome.innerHTML = `
-      <div class="welcome-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-      <h2>How can DevMind help you today?</h2>
-      <p>Ask me to explain, write, debug, or refactor code in your project.</p>
-      <div class="suggestions">
-        ${createSuggestion('Explain this file', 'Explain what the current file does', '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>').outerHTML}
-        ${createSuggestion('Add error handling', 'Add proper error handling to the current file', '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v4M12 16h.01"/>').outerHTML}
-        ${createSuggestion('Write tests', 'Write unit tests for the current file', '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>').outerHTML}
-        ${createSuggestion('Refactor code', 'Refactor this code for clarity', '<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>').outerHTML}
-      </div>
-    `;
-  } else {
-    welcome.innerHTML = `
-      <div class="welcome-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></div>
-      <h2>Welcome to DevMind</h2>
-      <p>Connect your account to start coding with AI assistance.</p>
-      <div class="welcome-actions">
-        <button class="btn btn-primary" id="btn-signin">Sign In</button>
-        <button class="btn btn-secondary" id="btn-apikey">Use API Key</button>
-      </div>
-    `;
-    setTimeout(() => {
-      document.getElementById('btn-signin')?.addEventListener('click', () => vscode.postMessage({ type: 'openOnboarding' }));
-      document.getElementById('btn-apikey')?.addEventListener('click', () => vscode.postMessage({ type: 'setKey' }));
-    }, 0);
-  }
-  
-  messages.appendChild(welcome);
+  msgsEl.innerHTML = '';
+  const items = [
+    { color:'blue',   icon:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',                  title:'Explain file', sub:'Walk me through what this file does' },
+    { color:'green',  icon:'<polyline points="20 6 9 17 4 12"/>',                             title:'Write tests',  sub:'Generate unit tests for selected code' },
+    { color:'amber',  icon:'<path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',  title:'Find issues', sub:'Review and identify potential bugs' },
+    { color:'purple', icon:'<path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',  title:'Refactor',   sub:'Clean up and improve code quality' },
+  ];
+
+  const div = document.createElement('div');
+  div.className = 'welcome';
+  div.innerHTML = `
+    <div class="welcome-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <h2>How can I help you?</h2>
+    <p>Ask me to explain, write, debug, or refactor any code in your workspace.</p>
+    <div class="quick-actions">
+      ${items.map(item => `
+        <div class="qa-item" data-prompt="${item.sub}">
+          <div class="qa-icon ${item.color}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${item.icon}</svg>
+          </div>
+          <div class="qa-text">
+            <div class="qa-title">${item.title}</div>
+            <div class="qa-sub">${item.sub}</div>
+          </div>
+          <span class="qa-arrow">›</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  div.querySelectorAll('.qa-item').forEach(el => {
+    el.onclick = () => {
+      inputEl.value = el.dataset.prompt;
+      inputEl.focus();
+    };
+  });
+
+  msgsEl.appendChild(div);
 }
 
-// ── Markdown parser ──
+// ── PARSE MARKDOWN ──
 function parseMarkdown(text) {
   return text
-    .replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-      const language = lang || 'code';
-      const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return `<div class="code-block"><div class="code-header"><span class="code-lang">${language}</span><div class="code-actions"><button class="code-action" onclick="copyCode(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></div><pre><code>${escaped.trim()}</code></pre></div>`;
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+      const l = lang || 'code';
+      const esc = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div class="code-wrap">
+        <div class="code-head">
+          <span class="code-lang">${l}</span>
+          <div class="code-actions-row">
+            <button class="code-btn" onclick="copyCode(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="code-btn" onclick="insertCode(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              Insert
+            </button>
+          </div>
+        </div>
+        <pre><code>${esc.trim()}</code></pre>
+      </div>`;
     })
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/^\- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(.+)$/gm, m => m.startsWith('<') ? m : `<p>${m}</p>`);
+    .replace(/<\/li>\n<li>/g, '</li><li>')
+    .replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/^([^<\n].*)$/gm, m => m.startsWith('<') ? m : `<p>${m}</p>`);
 }
 
-// ── Add message ──
-function addMessage(kind, text, atts = []) {
-  const msg = document.createElement('div');
-  msg.className = `msg ${kind}`;
-  
-  if (kind === 'user') {
-    msg.innerHTML = `<div class="msg-bubble">${text}</div>`;
-  } else if (kind === 'bot') {
-    msg.innerHTML = `
-      <div class="msg-bot-avatar">D</div>
-      <div class="msg-bot-content">
-        <div class="msg-bot-header">
-          <span class="msg-bot-name">DevMind</span>
-          <span class="msg-bot-time">Just now</span>
-        </div>
-        <div class="msg-bubble">
-          <div class="msg-content">${text}</div>
-        </div>
-      </div>
-    `;
-    msg._code = text;
-  } else if (kind === 'error') {
-    msg.innerHTML = `<div class="msg-bubble">${text}</div>`;
-  } else if (kind === 'warning') {
-    msg.innerHTML = `<div class="msg-bubble">${text}</div>`;
-  }
-  
-  messages.appendChild(msg);
-  messages.scrollTop = messages.scrollHeight;
-  return msg;
+// ── ADD USER MSG ──
+function addUserMsg(text) {
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `<div class="user-bubble">${escapeHtml(text)}</div>`;
+  msgsEl.appendChild(row);
+  scroll();
 }
 
-// ── Thinking indicator ──
-function showThinking() {
-  const div = document.createElement('div');
-  div.className = 'msg';
-  div.id = 'thinking';
-  div.innerHTML = `
-    <div class="msg-bot-avatar">D</div>
-    <div class="msg-bot-content">
-      <div class="msg-bot-header">
-        <span class="msg-bot-name">DevMind</span>
+// ── ADD BOT MSG ──
+function addBotMsg(html) {
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.innerHTML = `
+    <div class="bot-row">
+      <div class="bot-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
       </div>
-      <div class="thinking">
-        <div class="thinking-dots"><span></span><span></span><span></span></div>
-        <span class="thinking-text">Thinking...</span>
-        <button class="stop-btn" onclick="stopThinking()">Stop</button>
+      <div class="bot-content">
+        <div class="bot-label">DevMind</div>
+        <div class="bot-bubble">
+          <div class="md">${html}</div>
+        </div>
       </div>
     </div>
   `;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-  return div;
+  msgsEl.appendChild(row);
+  scroll();
+  return row;
+}
+
+// ── THINKING ──
+function showThinking() {
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.id = 'thinking';
+  row.innerHTML = `
+    <div class="thinking-row">
+      <div class="bot-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="thinking-body">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <span class="thinking-label">Generating…</span>
+        <button class="stop-btn" onclick="stopGen()">Stop</button>
+      </div>
+    </div>
+  `;
+  msgsEl.appendChild(row);
+  scroll();
+  return row;
 }
 
 function hideThinking() {
   document.getElementById('thinking')?.remove();
 }
 
-// ── Send message ──
+// ── SEND ──
 function sendMessage() {
-  const text = input.value.trim();
+  const text = inputEl.value.trim();
   if (!text || sending) return;
-  
-  const welcome = messages.querySelector('.welcome');
-  if (welcome) welcome.remove();
-  
-  addMessage('user', text, attachments);
-  input.value = '';
-  input.style.height = 'auto';
-  
-  currentBot = showThinking();
+
+  msgsEl.querySelector('.welcome')?.remove();
+  addUserMsg(text);
+
+  inputEl.value = '';
+  autoResize();
   sending = true;
-  send.disabled = true;
-  
-  vscode.postMessage({ type: 'chat', text, attachments });
-  
+  sendBtn.disabled = true;
+
+  currentBotRow = showThinking();
+
+  vscode.postMessage({ type: 'chat', text, attachments: [...attachments] });
   attachments = [];
-  renderComposerAttachments();
+  renderAttachments();
 }
 
-// ── Composer attachments ──
-function renderComposerAttachments() {
-  if (attachments.length === 0) {
-    composerAttachments.innerHTML = '';
-    return;
-  }
-  composerAttachments.innerHTML = attachments.map((a, i) => {
-    if (a.type === 'image') {
-      return `<div class="composer-attachment"><img src="${a.dataUrl}" /><span>${a.name}</span><button onclick="removeAttachment(${i})">×</button></div>`;
-    }
-    return `<div class="composer-attachment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${a.name}<button onclick="removeAttachment(${i})">×</button></div>`;
-  }).join('');
-}
-
-window.removeAttachment = function(i) {
-  attachments.splice(i, 1);
-  renderComposerAttachments();
+// ── STOP ──
+window.stopGen = function() {
+  vscode.postMessage({ type: 'stopGeneration' });
+  hideThinking();
+  if (currentBotRow) { currentBotRow.remove(); currentBotRow = null; }
+  sending = false;
+  sendBtn.disabled = false;
 };
 
-// ── Code actions ──
+// ── COPY / INSERT CODE ──
 window.copyCode = function(btn) {
-  const code = btn.closest('.code-block').querySelector('code').textContent;
+  const code = btn.closest('.code-wrap').querySelector('code').textContent;
   navigator.clipboard.writeText(code).then(() => {
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Copied!';
-    btn.classList.add('success');
+    btn.classList.add('ok');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
     setTimeout(() => {
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy';
-      btn.classList.remove('success');
+      btn.classList.remove('ok');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
     }, 2000);
   });
 };
 
 window.insertCode = function(btn) {
-  const msg = btn.closest('.msg.bot');
-  vscode.postMessage({ type: 'insertCode', code: msg._code });
-  btn.disabled = true;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Inserted';
+  const code = btn.closest('.code-wrap').querySelector('code').textContent;
+  vscode.postMessage({ type: 'insertCode', code });
+  btn.classList.add('ok');
+  btn.textContent = '✓ Inserted';
 };
 
-window.applyCode = function(btn) {
-  const msg = btn.closest('.msg.bot');
-  vscode.postMessage({ type: 'applyCode', code: msg._code, filePath: '' });
-  btn.disabled = true;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Applied';
+// ── ATTACHMENTS ──
+function renderAttachments() {
+  if (!attachments.length) { attStrip.innerHTML = ''; return; }
+  attStrip.innerHTML = attachments.map((a, i) => `
+    <div class="att-chip">
+      <span>${a.name}</span>
+      <button onclick="removeAtt(${i})">×</button>
+    </div>
+  `).join('');
+}
+window.removeAtt = function(i) {
+  attachments.splice(i, 1);
+  renderAttachments();
 };
 
-window.stopThinking = function() {
-  vscode.postMessage({ type: 'stopGeneration' });
-  hideThinking();
-  sending = false;
-  send.disabled = false;
-};
-
-// ── @ mention ──
-function showMentionDropdown(results) {
-  document.querySelector('.mention-dropdown')?.remove();
-  if (results.length === 0) return;
-  
-  const drop = document.createElement('div');
-  drop.className = 'mention-dropdown';
-  results.slice(0, 6).forEach(f => {
-    const item = document.createElement('div');
-    item.className = 'mention-item';
-    item.innerHTML = `<div class="mention-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="mention-name">${f.name}</div><div class="mention-path">${f.path}</div></div>`;
-    item.onclick = () => selectMention(f);
-    drop.appendChild(item);
-  });
-  document.querySelector('.composer').appendChild(drop);
+// ── HELPERS ──
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function scroll() {
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+function autoResize() {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
 }
 
-function selectMention(file) {
-  const before = input.value.slice(0, lastInputPos);
-  const after = input.value.slice(input.selectionStart);
-  input.value = before + '@' + file.name + ' ' + after;
-  document.querySelector('.mention-dropdown')?.remove();
-  mentionShow = false;
-  input.focus();
-}
-
-// ── Event listeners ──
-send.onclick = sendMessage;
-document.getElementById('btn-new').onclick = () => vscode.postMessage({ type: 'clear' });
-document.getElementById('btn-settings').onclick = () => vscode.postMessage({ type: 'openOnboarding' });
-document.querySelector('.profile-btn').onclick = () => vscode.postMessage({ type: 'setKey' });
-
-input.addEventListener('input', () => {
-  input.style.height = 'auto';
-  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-  
-  const pos = input.selectionStart;
-  const before = input.value.slice(0, pos);
-  const lastAt = before.lastIndexOf('@');
-  
-  if (lastAt !== -1) {
-    const after = before.slice(lastAt + 1);
-    if (!after.includes(' ') && after.length > 0) {
-      mentionShow = true;
-      lastInputPos = lastAt;
-      vscode.postMessage({ type: 'searchFiles', query: after });
-    } else {
-      document.querySelector('.mention-dropdown')?.remove();
-      mentionShow = false;
-    }
-  } else {
-    document.querySelector('.mention-dropdown')?.remove();
-    mentionShow = false;
-  }
-});
-
-input.addEventListener('keydown', e => {
+// ── INPUT EVENTS ──
+inputEl.addEventListener('input', autoResize);
+inputEl.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
-    if (mentionShow) {
-      const drop = document.querySelector('.mention-dropdown');
-      if (drop) { e.preventDefault(); drop.querySelector('.mention-item')?.click(); return; }
-    }
     e.preventDefault();
     sendMessage();
   }
 });
-
-attachBtn.onclick = () => fileInput.click();
-imageBtn.onclick = () => imageInput.click();
+sendBtn.onclick = sendMessage;
+document.getElementById('btn-new').onclick = () => vscode.postMessage({ type: 'clear' });
+document.getElementById('btn-settings').onclick = () => vscode.postMessage({ type: 'openOnboarding' });
 
 fileInput.onchange = async () => {
   for (const f of fileInput.files) {
     const content = await f.text();
     attachments.push({ type: 'file', name: f.name, content });
   }
-  renderComposerAttachments();
+  renderAttachments();
   fileInput.value = '';
 };
-
-imageInput.onchange = async () => {
-  for (const f of imageInput.files) {
-    const reader = new FileReader();
-    reader.onload = () => attachments.push({ type: 'image', name: f.name, dataUrl: reader.result });
-    reader.readAsDataURL(f);
+imgInput.onchange = async () => {
+  for (const f of imgInput.files) {
+    const r = new FileReader();
+    r.onload = () => { attachments.push({ type: 'image', name: f.name, dataUrl: r.result }); renderAttachments(); };
+    r.readAsDataURL(f);
   }
-  renderComposerAttachments();
-  imageInput.value = '';
+  imgInput.value = '';
 };
+document.getElementById('btn-attach').onclick = () => fileInput.click();
+document.getElementById('btn-image').onclick = () => imgInput.click();
 
-// ── Message handler ──
+// ── VSCODE MESSAGE HANDLER ──
 window.addEventListener('message', e => {
   const m = e.data;
-  
-  // Debug log
-  console.log('Received message:', m.type);
-  
-  // Handle thinking indicator - only show it
+
   if (m.type === 'thinking') {
-    if (m.show) {
-      showThinking();
-    } else {
-      hideThinking();
-    }
+    if (m.show) { currentBotRow = showThinking(); }
+    else hideThinking();
     return;
   }
-  
-  // Token streaming - update content but don't hide thinking yet
+
   if (m.type === 'token') {
-    console.log('[Webview] Token received:', m.text?.substring(0, 30), 'currentBot:', !!currentBot);
-    if (m.text && m.text.trim()) {
-      if (currentBot) {
-        const content = currentBot.querySelector('.msg-content') || currentBot.querySelector('.msg-bot-content');
-        console.log('[Webview] Content element:', !!content, 'classes:', content?.className);
-        if (content) {
-          content.innerHTML += parseMarkdown(m.text).replace(/<div class="msg-content">|<\/div>/g, '');
-          content.style.display = 'block';
-          content.style.visibility = 'visible';
-          content.style.opacity = '1';
-        }
-        messages.scrollTop = messages.scrollHeight;
-      } else {
-        console.log('[Webview] Token but no currentBot, creating bot message');
-        currentBot = showThinking();
-        const content = currentBot.querySelector('.msg-content') || currentBot.querySelector('.msg-bot-content');
-        if (content) {
-          content.innerHTML = parseMarkdown(m.text);
-          content.style.display = 'block';
-          content.style.visibility = 'visible';
-        }
-      }
+    if (!m.text?.trim()) return;
+    if (!currentBotRow || currentBotRow.id === 'thinking') {
+      hideThinking();
+      currentBotRow = addBotMsg('');
     }
+    const md = currentBotRow.querySelector('.md');
+    if (md) { md.innerHTML += parseMarkdown(m.text).replace(/<div class="md">|<\/div>/g,''); scroll(); }
     return;
   }
-  
-  // Done - hide thinking and show final response
+
   if (m.type === 'done') {
     hideThinking();
-    if (currentBot) {
-      const content = currentBot.querySelector('.msg-content') || currentBot.querySelector('.msg-bot-content');
-      if (content) {
-        content.innerHTML = parseMarkdown(m.text);
-        
-        const hasCode = /```|function |const |class |export |import |def |async/.test(m.text);
-        if (hasCode) {
-          const actions = document.createElement('div');
-          actions.style.marginTop = '12px';
-          actions.innerHTML = `
-            <button class="code-action" onclick="insertCode(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Insert</button>
-            <button class="code-action" onclick="applyCode(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Apply</button>
-          `;
-          content.appendChild(actions);
-        }
-      }
+    if (currentBotRow) {
+      const md = currentBotRow.querySelector('.md');
+      if (md) md.innerHTML = parseMarkdown(m.text);
+    } else {
+      addBotMsg(parseMarkdown(m.text));
     }
-    currentBot = null;
+    currentBotRow = null;
     sending = false;
-    send.disabled = false;
+    sendBtn.disabled = false;
+    return;
   }
-  
+
   if (m.type === 'error') {
     hideThinking();
-    if (currentBot) { currentBot.remove(); currentBot = null; }
-    addMessage('error', m.text);
+    if (currentBotRow) { currentBotRow.remove(); currentBotRow = null; }
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.innerHTML = `<div class="err-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${escapeHtml(m.text)}</div>`;
+    msgsEl.appendChild(row);
+    scroll();
     sending = false;
-    send.disabled = false;
+    sendBtn.disabled = false;
+    return;
   }
-  
-  if (m.type === 'warning') {
-    hideThinking();
-    if (currentBot) { currentBot.remove(); currentBot = null; }
-    addMessage('warning', m.text);
-    sending = false;
-    send.disabled = false;
-  }
-  
-  if (m.type === 'cleared') {
-    showWelcome();
-  }
-  
+
+  if (m.type === 'cleared') { showWelcome(); return; }
+
   if (m.type === 'usage') {
-    quotaText.textContent = m.hasApiKey ? `${m.remaining} requests left` : 'Not signed in';
-    planBadge.textContent = m.hasApiKey ? m.plan.toUpperCase() : '';
-  }
-  
-  if (m.type === 'searchResults' && mentionShow) {
-    showMentionDropdown(m.results);
+    usageLbl.textContent = m.hasApiKey ? `${m.remaining} req left` : 'Not signed in';
   }
 });
 
-// Init
+// ── INIT ──
 showWelcome();
 vscode.postMessage({ type: 'getUsage' });
 </script>
