@@ -322,10 +322,17 @@
     background: var(--bg-elev);
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+    position: relative;
+    z-index: 10;
   }
   .composer-attachments {
     display: flex; flex-wrap: wrap; gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  .composer-attachments:empty {
+    display: none;
   }
   .composer-attachment {
     display: flex; align-items: center; gap: 6px;
@@ -333,30 +340,40 @@
     background: var(--bg-hover);
     border: 1px solid var(--border);
     font-size: 11px;
+    max-width: 200px;
+  }
+  .composer-attachment span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .composer-attachment img {
-    width: 32px; height: 32px; border-radius: 4px; object-fit: cover;
+    width: 28px; height: 28px; border-radius: 4px; object-fit: cover;
+    flex-shrink: 0;
   }
   .composer-attachment button {
     background: none; border: none; color: var(--text-muted);
-    cursor: pointer; padding: 0;
+    cursor: pointer; padding: 0; flex-shrink: 0;
   }
+  .composer-attachment button:hover { color: var(--accent-red); }
   .composer-input-wrap {
-    display: flex; gap: 10px;
-    padding: 12px;
+    display: flex; align-items: flex-end; gap: 10px;
+    padding: 10px 14px;
     border-radius: 12px;
     background: var(--bg);
     border: 1px solid var(--border);
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
   .composer-input-wrap:focus-within {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
   }
   .composer-tools {
-    display: flex; gap: 4px;
+    display: flex; gap: 2px;
+    flex-shrink: 0;
   }
   .tool-btn {
-    width: 32px; height: 32px; border-radius: 6px;
+    width: 28px; height: 28px; border-radius: 6px;
     border: none; background: transparent;
     color: var(--text-muted);
     cursor: pointer; display: flex;
@@ -367,8 +384,8 @@
   .tool-btn svg { width: 16px; height: 16px; }
   .composer-input {
     flex: 1;
-    min-height: 24px;
-    max-height: 120px;
+    min-height: 20px;
+    max-height: 100px;
     padding: 4px 0;
     border: none; background: transparent;
     color: var(--text);
@@ -449,7 +466,7 @@
     <div class="model-selector">
       <div class="model-badge">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        <span class="model-name">DeepSeek Chat</span>
+        <span class="model-name">DevMind</span>
       </div>
       <span class="quota-info" id="quota-text">Ready</span>
     </div>
