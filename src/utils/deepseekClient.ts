@@ -18,7 +18,7 @@ export class DeepSeekClient {
   constructor(private serverUrl: string, private apiKey: string) {
     this.http = axios.create({
       baseURL: serverUrl,
-      timeout: 30_000,
+      timeout: 180_000,  // 3 min for large requests
       headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
     });
   }
@@ -130,7 +130,7 @@ export class DeepSeekClient {
     const res = await this.http.post('/v1/scaffold', {
       model:      MODELS.scaffold,
       ...params,
-    });
+    }, { timeout: 120_000 });  // 2 min timeout
     return res.data;
   }
 
