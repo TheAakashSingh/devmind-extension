@@ -836,12 +836,27 @@ window.addEventListener('message', e => {
   
   // Token streaming - update content but don't hide thinking yet
   if (m.type === 'token') {
-    // Only hide thinking if we actually have content
+    console.log('[Webview] Token received:', m.text?.substring(0, 30), 'currentBot:', !!currentBot);
     if (m.text && m.text.trim()) {
       if (currentBot) {
-        const content = currentBot.querySelector('.msg-content');
-        if (content) content.innerHTML += parseMarkdown(m.text).replace(/<div class="msg-content">|<\/div>/g, '');
+        const content = currentBot.querySelector('.msg-content') || currentBot.querySelector('.msg-bot-content');
+        console.log('[Webview] Content element:', !!content, 'classes:', content?.className);
+        if (content) {
+          content.innerHTML += parseMarkdown(m.text).replace(/<div class="msg-content">|<\/div>/g, '');
+          content.style.display = 'block';
+          content.style.visibility = 'visible';
+          content.style.opacity = '1';
+        }
         messages.scrollTop = messages.scrollHeight;
+      } else {
+        console.log('[Webview] Token but no currentBot, creating bot message');
+        currentBot = showThinking();
+        const content = currentBot.querySelector('.msg-content') || currentBot.querySelector('.msg-bot-content');
+        if (content) {
+          content.innerHTML = parseMarkdown(m.text);
+          content.style.display = 'block';
+          content.style.visibility = 'visible';
+        }
       }
     }
     return;
@@ -851,7 +866,7 @@ window.addEventListener('message', e => {
   if (m.type === 'done') {
     hideThinking();
     if (currentBot) {
-      const content = currentBot.querySelector('.msg-content');
+      const content = currentBot.querySelector('.msg-content') || currentBot.querySelector('.msg-bot-content');
       if (content) {
         content.innerHTML = parseMarkdown(m.text);
         

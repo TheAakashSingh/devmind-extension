@@ -128,19 +128,24 @@ export class DeepSeekClient {
     return new Promise((resolve, reject) => {
       let full = '';
       res.data.on('data', (chunk: Buffer) => {
-        chunk.toString().split('\n')
-          .filter((l: string) => l.startsWith('data: '))
+        const raw = chunk.toString();
+        console.log('[Extension] Raw chunk length:', raw.length);
+        raw.split('\n')
+          .filter((l: string) => l.startsWith('data: ') && !l.includes('[DONE]'))
           .forEach((l: string) => {
             try {
               const j = JSON.parse(l.slice(6));
               const t = j.choices?.[0]?.delta?.content ?? '';
+              console.log('[Extension] Token:', t.substring(0, 50));
               full += t;
-              onToken(t);
-            } catch {}
+              if (onToken) onToken(t);
+            } catch (e: any) {
+              console.log('[Extension] Parse error:', e.message);
+            }
           });
       });
-      res.data.on('end',   () => resolve(full));
-      res.data.on('error', reject);
+      res.data.on('end',   () => { console.log('[Extension] Done, full length:', full.length); resolve(full); });
+      res.data.on('error', (e: Error) => { console.log('[Extension] Stream error:', e.message); reject(e); });
     });
   }
 

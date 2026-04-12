@@ -374,6 +374,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private post(message: object) {
+    console.log('[SidebarProvider] Posting message:', message);
     this.view?.webview.postMessage(message);
   }
 
