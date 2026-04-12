@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
-import { DeepSeekClient } from '../utils/deepseekClient';
-import { UsageTracker }   from '../utils/usageTracker';
+import { DeepSeekClient }            from '../utils/deepseekClient';
+import { UsageTracker }              from '../utils/usageTracker';
+import { collectProjectContext, buildContextPrompt } from '../utils/contextCollector';
 
 export class InlineCompletionProvider implements vscode.InlineCompletionItemProvider {
-  private timer:  NodeJS.Timeout | null = null;
-  private reqId = 0;
-  private cache = new Map<string, string>();
+  private timer:   NodeJS.Timeout | null = null;
+  private reqId  = 0;
+  private cache  = new Map<string, string>();
+  private projCtxCache: { ctx: string; ts: number } | null = null;
 
   constructor(
     private readonly client: DeepSeekClient,
@@ -18,6 +20,7 @@ export class InlineCompletionProvider implements vscode.InlineCompletionItemProv
     _ctx:  vscode.InlineCompletionContext,
     token: vscode.CancellationToken
   ): Promise<vscode.InlineCompletionList | null> {
+
     const cfg = vscode.workspace.getConfiguration('devmind');
     if (!cfg.get<boolean>('enableInline', true)) { return null; }
     if (!this.usage.canComplete())               { return null; }
@@ -30,23 +33,47 @@ export class InlineCompletionProvider implements vscode.InlineCompletionItemProv
     });
     if (token.isCancellationRequested) { return null; }
 
-    // Skip very short lines
+    // Skip trivially short lines
     const line = doc.lineAt(pos.line).text.trim();
-    if (line.length < 3) { return null; }
+    if (line.length < 2) { return null; }
 
-    const prefix   = this.before(doc, pos, 50);
-    const suffix   = this.after(doc, pos, 10);
-    const lang     = doc.languageId;
-    const fileName = doc.fileName.split(/[\\/]/).pop() || '';
+    // Skip comment-only lines (they're usually not completions)
+    if (line.startsWith('//') && line.length < 5) { return null; }
 
-    const cacheKey = `${lang}:${prefix.slice(-300)}`;
+    const contextLines = cfg.get<number>('contextLines', 60);
+    const prefix       = this.before(doc, pos, contextLines);
+    const suffix       = this.after(doc, pos, 10);
+    const lang         = doc.languageId;
+    const fileName     = doc.fileName.split(/[\\/]/).pop() || '';
+
+    const cacheKey = `${lang}:${prefix.slice(-400)}`;
     if (this.cache.has(cacheKey)) {
       return this.wrap(this.cache.get(cacheKey)!, pos);
     }
 
+    // Get project context (cached for 60s to avoid FS reads on every keystroke)
+    let projectCtx: string | undefined;
+    const now = Date.now();
+    if (cfg.get<boolean>('projectAware', true)) {
+      if (!this.projCtxCache || (now - this.projCtxCache.ts) > 60_000) {
+        try {
+          const proj = collectProjectContext();
+          this.projCtxCache = { ctx: buildContextPrompt(proj, null), ts: now };
+        } catch {}
+      }
+      projectCtx = this.projCtxCache?.ctx;
+    }
+
     const id = ++this.reqId;
     try {
-      const completion = await this.client.complete({ prefix, suffix, language: lang, fileName });
+      const completion = await this.client.complete({
+        prefix,
+        suffix,
+        language:   lang,
+        fileName,
+        projectCtx,
+      });
+
       if (token.isCancellationRequested || id !== this.reqId) { return null; }
       if (!completion?.trim()) { return null; }
 

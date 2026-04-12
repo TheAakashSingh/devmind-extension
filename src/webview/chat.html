@@ -8,524 +8,216 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg0: #0e0f11;
-  --bg1: #13151a;
-  --bg2: #1a1d24;
-  --bg3: #21252f;
-  --line: rgba(255,255,255,0.07);
-  --line2: rgba(255,255,255,0.12);
-  --txt: #e8eaf0;
-  --txt2: #8b909e;
-  --txt3: #555b6a;
-  --blue: #4f8ef7;
-  --blue2: #2563eb;
-  --green: #34d399;
-  --amber: #fbbf24;
-  --red: #f87171;
-  --purple: #a78bfa;
-  --radius: 10px;
-  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --mono: 'DM Mono', 'Consolas', monospace;
+  --bg0:#0e0f11; --bg1:#13151a; --bg2:#1a1d24; --bg3:#21252f;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.12);
+  --txt:#e8eaf0; --txt2:#8b909e; --txt3:#555b6a;
+  --blue:#4f8ef7; --blue2:#2563eb; --green:#34d399;
+  --amber:#fbbf24; --red:#f87171; --purple:#a78bfa;
+  --font:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'DM Mono','Consolas',monospace;
 }
-
-html { height: 100%; }
+html,body { height:100%; }
 body {
-  font-family: var(--font);
-  font-size: 13px;
-  background: var(--bg0);
-  color: var(--txt);
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  /* CRITICAL: ensure text never collapses to single words */
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
+  font-family:var(--font); font-size:13px;
+  background:var(--bg0); color:var(--txt);
+  display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  word-wrap:break-word; overflow-wrap:break-word;
 }
 
-/* ── TOPBAR ── */
+/* TOPBAR */
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  height: 42px;
-  background: var(--bg1);
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 10px; height:40px;
+  background:var(--bg1); border-bottom:1px solid var(--line); flex-shrink:0;
 }
-.topbar-left { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.brand-mark {
-  width: 24px; height: 24px; flex-shrink: 0;
-  border-radius: 6px;
-  background: var(--blue);
-  display: flex; align-items: center; justify-content: center;
-}
-.brand-mark svg { width: 13px; height: 13px; color: #fff; }
-.brand-name { font-size: 13px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
-
-.topbar-center { display: flex; align-items: center; gap: 5px; }
-.model-pill {
-  display: flex; align-items: center; gap: 5px;
-  padding: 3px 9px;
-  border-radius: 20px;
-  background: var(--bg3);
-  border: 1px solid var(--line2);
-  font-size: 11px; font-weight: 500;
-  color: var(--txt2);
-  cursor: pointer;
-  font-family: var(--font);
-  white-space: nowrap;
-}
-.model-pill:hover { border-color: var(--blue); color: var(--txt); }
-.model-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
-
-.topbar-right { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.topbar-left { display:flex; align-items:center; gap:7px; }
+.brand-logo { width:22px; height:22px; border-radius:5px; overflow:hidden; flex-shrink:0; }
+.brand-logo img { width:100%; height:100%; object-fit:cover; display:block; }
+.brand-name { font-size:13px; font-weight:600; letter-spacing:-0.02em; }
+.topbar-right { display:flex; align-items:center; gap:4px; }
 .icon-btn {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  border: none; background: transparent;
-  color: var(--txt3);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-  font-family: var(--font);
+  width:26px; height:26px; border-radius:5px; border:none;
+  background:transparent; color:var(--txt3); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:all 0.15s;
 }
-.icon-btn:hover { background: var(--bg3); color: var(--txt2); }
-.icon-btn svg { width: 14px; height: 14px; }
-.avatar-btn {
-  width: 24px; height: 24px;
-  border-radius: 50%; border: none;
-  background: linear-gradient(135deg, var(--purple), var(--blue));
-  color: #fff; font-size: 10px; font-weight: 600;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font);
-}
+.icon-btn:hover { background:var(--bg3); color:var(--txt2); }
+.icon-btn svg { width:13px; height:13px; }
 
-/* ── CONTEXT BAR ── */
+/* CONTEXT BAR — shows project intelligence */
 .ctx-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--bg1);
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-  overflow-x: auto;
-  min-height: 34px;
+  display:flex; align-items:center; gap:5px; padding:4px 10px;
+  background:var(--bg1); border-bottom:1px solid var(--line);
+  flex-shrink:0; overflow-x:auto; min-height:30px;
 }
-.ctx-bar::-webkit-scrollbar { display: none; }
-.ctx-label { font-size: 10px; color: var(--txt3); flex-shrink: 0; white-space: nowrap; }
-.ctx-file {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--bg3); border: 1px solid var(--line);
-  font-size: 10px; font-family: var(--mono);
-  color: var(--txt2); white-space: nowrap;
-  cursor: pointer; flex-shrink: 0;
+.ctx-bar::-webkit-scrollbar { display:none; }
+.ctx-pill {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 7px; border-radius:4px;
+  background:var(--bg3); border:1px solid var(--line);
+  font-size:10px; font-family:var(--mono); color:var(--txt2);
+  white-space:nowrap; flex-shrink:0;
 }
-.ctx-file:hover { border-color: var(--blue); color: var(--txt); }
-.ctx-file .ext { color: var(--blue); }
-.ctx-add {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px dashed var(--line2);
-  background: transparent; color: var(--txt3);
-  font-size: 10px; cursor: pointer; white-space: nowrap;
-  flex-shrink: 0; font-family: var(--font);
-}
-.ctx-add:hover { border-color: var(--blue); color: var(--blue); }
+.ctx-pill .dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.ctx-pill.fw  .dot { background:#4f8ef7; }
+.ctx-pill.db  .dot { background:#34d399; }
+.ctx-pill.auth .dot { background:#a78bfa; }
+.ctx-pill.lang .dot { background:#fbbf24; }
+.ctx-pill.model .dot { background:#f87171; }
 
-/* ── MESSAGES ── */
+/* MESSAGES */
 .messages {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 14px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  flex:1; overflow-y:auto; overflow-x:hidden;
+  padding:12px 10px; display:flex; flex-direction:column; gap:6px;
 }
-.messages::-webkit-scrollbar { width: 4px; }
-.messages::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+.messages::-webkit-scrollbar { width:3px; }
+.messages::-webkit-scrollbar-thumb { background:var(--bg3); border-radius:2px; }
 
-/* ── WELCOME — THE FIX IS HERE ── */
-.welcome {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 24px 12px;
-  text-align: center;
-  animation: fadeUp 0.35s ease-out;
-  min-width: 0;
-  width: 100%;
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.welcome-logo {
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  background: var(--blue);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 12px; flex-shrink: 0;
-}
-.welcome-logo svg { width: 22px; height: 22px; color: #fff; }
-/* THE CRITICAL FIX: explicit display:block + white-space:normal */
-.welcome h2 {
-  display: block;
-  width: 100%;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-bottom: 6px;
-  white-space: normal;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  line-height: 1.4;
-}
-.welcome p {
-  display: block;
-  width: 100%;
-  font-size: 12px;
-  color: var(--txt2);
-  line-height: 1.6;
-  margin-bottom: 20px;
-  white-space: normal;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-.quick-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 100%;
-}
+/* WELCOME */
+.welcome { display:flex; flex-direction:column; align-items:center; padding:20px 10px; text-align:center; width:100%; }
+.welcome-logo { width:44px; height:44px; border-radius:12px; background:var(--blue); display:flex; align-items:center; justify-content:center; margin-bottom:12px; flex-shrink:0; }
+.welcome-logo img { width:28px; height:28px; object-fit:cover; border-radius:4px; }
+.welcome h2 { font-size:15px; font-weight:600; margin-bottom:6px; line-height:1.4; }
+.welcome p { font-size:12px; color:var(--txt2); line-height:1.6; margin-bottom:16px; }
+.quick-actions { display:flex; flex-direction:column; gap:5px; width:100%; }
 .qa-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--bg2);
-  border: 1px solid var(--line);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: left;
-  min-width: 0;
+  display:flex; align-items:center; gap:9px; padding:9px 10px;
+  border-radius:8px; background:var(--bg2); border:1px solid var(--line);
+  cursor:pointer; transition:all 0.15s; text-align:left;
 }
-.qa-item:hover { background: var(--bg3); border-color: var(--line2); transform: translateX(2px); }
-.qa-icon {
-  width: 26px; height: 26px;
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.qa-icon svg { width: 12px; height: 12px; }
-.qa-icon.blue   { background: rgba(79,142,247,0.15); color: var(--blue); }
-.qa-icon.green  { background: rgba(52,211,153,0.15); color: var(--green); }
-.qa-icon.amber  { background: rgba(251,191,36,0.15); color: var(--amber); }
-.qa-icon.purple { background: rgba(167,139,250,0.15); color: var(--purple); }
-.qa-text { flex: 1; min-width: 0; overflow: hidden; }
-.qa-title {
-  font-size: 12px; font-weight: 500;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.qa-sub {
-  font-size: 10.5px; color: var(--txt3); margin-top: 1px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.qa-arrow { color: var(--txt3); font-size: 12px; flex-shrink: 0; }
+.qa-item:hover { background:var(--bg3); border-color:var(--line2); transform:translateX(2px); }
+.qa-icon { width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.qa-icon svg { width:12px; height:12px; }
+.qa-icon.blue   { background:rgba(79,142,247,.15); color:var(--blue); }
+.qa-icon.green  { background:rgba(52,211,153,.15); color:var(--green); }
+.qa-icon.amber  { background:rgba(251,191,36,.15); color:var(--amber); }
+.qa-icon.purple { background:rgba(167,139,250,.15); color:var(--purple); }
+.qa-icon.red    { background:rgba(248,113,113,.15); color:var(--red); }
+.qa-text { flex:1; min-width:0; }
+.qa-title { font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qa-sub { font-size:10.5px; color:var(--txt3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qa-arrow { color:var(--txt3); font-size:12px; flex-shrink:0; }
 
-/* ── MESSAGE ROWS ── */
-.msg-row {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  width: 100%;
-  animation: msgIn 0.2s ease-out;
-}
-@keyframes msgIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.msg-row.user  { align-items: flex-end; margin: 5px 0; }
-.msg-row.bot   { align-items: flex-start; margin: 5px 0; }
-
+/* MESSAGES */
+.msg-row { display:flex; flex-direction:column; width:100%; animation:msgIn .2s ease-out; }
+@keyframes msgIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+.msg-row.user  { align-items:flex-end; margin:4px 0; }
+.msg-row.bot   { align-items:flex-start; margin:4px 0; }
 .user-bubble {
-  max-width: 85%;
-  padding: 9px 13px;
-  border-radius: 14px 14px 3px 14px;
-  background: var(--blue2);
-  color: #fff;
-  font-size: 13px;
-  line-height: 1.55;
-  /* CRITICAL: text wrap */
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  max-width:88%; padding:9px 13px;
+  border-radius:14px 14px 3px 14px;
+  background:var(--blue2); color:#fff;
+  font-size:13px; line-height:1.55;
+  white-space:pre-wrap; word-wrap:break-word;
 }
-
-.bot-row { display: flex; gap: 8px; align-items: flex-start; width: 100%; min-width: 0; }
+.bot-row { display:flex; gap:8px; align-items:flex-start; width:100%; }
 .bot-avatar {
-  width: 24px; height: 24px;
-  border-radius: 7px; background: var(--blue);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 2px;
+  width:24px; height:24px; border-radius:7px; background:var(--blue);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;
 }
-.bot-avatar svg { width: 12px; height: 12px; color: #fff; }
-.bot-content { flex: 1; min-width: 0; overflow: hidden; }
-.bot-label {
-  font-size: 10px; color: var(--txt3); margin-bottom: 4px;
-  font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
-}
+.bot-avatar img { width:16px; height:16px; object-fit:cover; border-radius:3px; }
+.bot-content { flex:1; min-width:0; overflow:hidden; }
+.bot-label { font-size:10px; color:var(--txt3); margin-bottom:3px; font-weight:500; text-transform:uppercase; }
 .bot-bubble {
-  background: var(--bg2);
-  border: 1px solid var(--line);
-  border-radius: 3px 12px 12px 12px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.65;
-  min-width: 0;
-  overflow: hidden;
-  /* CRITICAL: text wrap */
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
+  background:var(--bg2); border:1px solid var(--line);
+  border-radius:3px 12px 12px 12px; padding:10px 12px;
+  font-size:13px; line-height:1.65;
+  word-wrap:break-word; overflow-wrap:break-word;
 }
 
-/* ── MARKDOWN ── */
-.md {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  /* CRITICAL: text wrap */
-  white-space: normal;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-.md p {
-  display: block; margin-bottom: 9px;
-  white-space: normal; word-wrap: break-word;
-}
-.md p:last-child { margin-bottom: 0; }
-.md h1, .md h2, .md h3 {
-  display: block; font-size: 13px; font-weight: 600;
-  margin: 12px 0 5px; white-space: normal;
-}
-.md ul, .md ol { padding-left: 16px; margin: 6px 0; }
-.md li { margin: 2px 0; color: var(--txt2); font-size: 12.5px; white-space: normal; }
-.md code:not(pre code) {
-  font-family: var(--mono); font-size: 11px;
-  padding: 1px 5px; border-radius: 3px;
-  background: var(--bg3); border: 1px solid var(--line2);
-  color: var(--blue);
-  word-break: break-all;
-}
-.md strong { font-weight: 600; color: var(--txt); }
+/* MARKDOWN */
+.md { display:block; width:100%; white-space:normal; word-wrap:break-word; }
+.md p { display:block; margin-bottom:8px; }
+.md p:last-child { margin-bottom:0; }
+.md h1,.md h2 { display:block; font-size:14px; font-weight:600; margin:12px 0 5px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+.md h3 { display:block; font-size:13px; font-weight:600; margin:10px 0 4px; }
+.md ul,.md ol { padding-left:16px; margin:6px 0; }
+.md li { margin:3px 0; color:var(--txt2); font-size:12.5px; }
+.md code:not(pre code) { font-family:var(--mono); font-size:11px; padding:1px 5px; border-radius:3px; background:var(--bg3); border:1px solid var(--line2); color:var(--blue); word-break:break-all; }
+.md strong { font-weight:600; color:var(--txt); }
+.md hr { border:none; border-top:1px solid var(--line); margin:10px 0; }
 
-/* ── CODE BLOCK ── */
-.code-wrap {
-  margin: 8px 0;
-  border-radius: 7px;
-  background: var(--bg0);
-  border: 1px solid var(--line2);
-  overflow: hidden;
-}
-.code-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--line);
-}
-.code-lang {
-  font-family: var(--mono); font-size: 9px;
-  font-weight: 500; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--blue);
-}
-.code-actions-row { display: flex; gap: 3px; }
-.code-btn {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px; border-radius: 3px; border: none;
-  background: var(--bg3); color: var(--txt3);
-  font-size: 10px; cursor: pointer; font-family: var(--font);
-  transition: all 0.15s; white-space: nowrap;
-}
-.code-btn:hover { color: var(--txt); background: var(--bg2); }
-.code-btn.ok { color: var(--green); }
-.code-btn svg { width: 10px; height: 10px; }
-.code-wrap pre { margin: 0; padding: 12px; overflow-x: auto; }
-.code-wrap code {
-  font-family: var(--mono); font-size: 11.5px;
-  line-height: 1.6; color: var(--txt); white-space: pre;
-}
+/* CODE BLOCKS */
+.code-wrap { margin:8px 0; border-radius:7px; background:var(--bg0); border:1px solid var(--line2); overflow:hidden; }
+.code-head { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; border-bottom:1px solid var(--line); }
+.code-lang { font-family:var(--mono); font-size:9px; font-weight:500; text-transform:uppercase; letter-spacing:.06em; color:var(--blue); }
+.code-acts { display:flex; gap:3px; }
+.code-btn { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:3px; border:none; background:var(--bg3); color:var(--txt3); font-size:10px; cursor:pointer; font-family:var(--font); transition:all 0.15s; }
+.code-btn:hover { color:var(--txt); }
+.code-btn.ok { color:var(--green); }
+.code-btn svg { width:10px; height:10px; }
+.code-wrap pre { margin:0; padding:12px; overflow-x:auto; }
+.code-wrap code { font-family:var(--mono); font-size:11.5px; line-height:1.6; color:var(--txt); white-space:pre; }
 
-/* ── THINKING ── */
-.thinking-row { display: flex; gap: 8px; align-items: flex-start; }
-.thinking-body {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px;
-  border-radius: 3px 12px 12px 12px;
-  background: var(--bg2); border: 1px solid var(--line);
-}
-.dots { display: flex; gap: 3px; }
-.dots span {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--blue);
-  animation: dpulse 1.4s ease-in-out infinite; opacity: 0.5;
-}
-.dots span:nth-child(2) { animation-delay: 0.2s; }
-.dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dpulse {
-  0%,60%,100% { transform: scale(0.8); opacity: 0.4; }
-  30%          { transform: scale(1.2); opacity: 1; }
-}
-.thinking-label { font-size: 11.5px; color: var(--txt2); white-space: nowrap; }
-.stop-btn {
-  padding: 2px 8px; border-radius: 3px;
-  border: 1px solid rgba(248,113,113,0.3);
-  background: rgba(248,113,113,0.08);
-  color: var(--red); font-size: 10.5px; cursor: pointer;
-  font-family: var(--font); white-space: nowrap;
-}
-.stop-btn:hover { background: rgba(248,113,113,0.15); }
+/* THINKING */
+.thinking-row { display:flex; gap:8px; align-items:flex-start; }
+.thinking-body { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:3px 12px 12px 12px; background:var(--bg2); border:1px solid var(--line); }
+.dots { display:flex; gap:3px; }
+.dots span { width:5px; height:5px; border-radius:50%; background:var(--blue); animation:dpulse 1.4s ease-in-out infinite; opacity:.5; }
+.dots span:nth-child(2) { animation-delay:.2s; }
+.dots span:nth-child(3) { animation-delay:.4s; }
+@keyframes dpulse { 0%,60%,100%{transform:scale(.8);opacity:.4} 30%{transform:scale(1.2);opacity:1} }
+.thinking-label { font-size:11.5px; color:var(--txt2); }
+.stop-btn { padding:2px 8px; border-radius:3px; border:1px solid rgba(248,113,113,.3); background:rgba(248,113,113,.08); color:var(--red); font-size:10.5px; cursor:pointer; font-family:var(--font); }
 
-/* ── ERROR ── */
-.err-bubble {
-  display: flex; align-items: flex-start; gap: 7px;
-  padding: 9px 11px; border-radius: 7px;
-  background: rgba(248,113,113,0.08);
-  border: 1px solid rgba(248,113,113,0.2);
-  color: var(--red); font-size: 12px; line-height: 1.5;
-  white-space: normal; word-wrap: break-word;
-}
-.err-bubble svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
+/* ERRORS */
+.err-bubble { display:flex; align-items:flex-start; gap:7px; padding:9px 11px; border-radius:7px; background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2); color:var(--red); font-size:12px; line-height:1.5; word-wrap:break-word; }
+.err-bubble svg { width:13px; height:13px; flex-shrink:0; margin-top:1px; }
+.warn-bubble { display:flex; align-items:flex-start; gap:7px; padding:9px 11px; border-radius:7px; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.2); color:var(--amber); font-size:12px; line-height:1.5; }
+.warn-bubble svg { width:13px; height:13px; flex-shrink:0; margin-top:1px; }
+.info-bubble { display:flex; align-items:flex-start; gap:7px; padding:8px 11px; border-radius:7px; background:rgba(79,142,247,.08); border:1px solid rgba(79,142,247,.2); color:var(--blue); font-size:12px; line-height:1.5; }
+.info-bubble svg { width:13px; height:13px; flex-shrink:0; margin-top:1px; }
 
-.warn-bubble {
-  display: flex; align-items: flex-start; gap: 7px;
-  padding: 9px 11px; border-radius: 7px;
-  background: rgba(251,191,36,0.08);
-  border: 1px solid rgba(251,191,36,0.2);
-  color: var(--amber); font-size: 12px; line-height: 1.5;
-  white-space: normal; word-wrap: break-word;
-}
-.warn-bubble svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
+/* COMPOSER */
+.composer { background:var(--bg1); border-top:1px solid var(--line); padding:7px 10px 9px; flex-shrink:0; position:relative; }
+.att-strip { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; }
+.att-strip:empty { display:none; }
+.att-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:4px; background:var(--bg3); border:1px solid var(--line); font-size:10px; font-family:var(--mono); color:var(--txt2); max-width:160px; }
+.att-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.att-chip button { background:none; border:none; color:var(--txt3); cursor:pointer; font-size:12px; padding:0; }
+.composer-box { display:flex; align-items:flex-end; gap:6px; padding:7px 9px; border-radius:10px; background:var(--bg2); border:1px solid var(--line2); transition:border-color .15s; }
+.composer-box:focus-within { border-color:var(--blue); box-shadow:0 0 0 2px rgba(79,142,247,.1); }
+.c-btn { width:24px; height:24px; border-radius:5px; border:none; background:transparent; color:var(--txt3); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; }
+.c-btn:hover { background:var(--bg3); color:var(--txt2); }
+.c-btn svg { width:13px; height:13px; }
+.c-input { flex:1; min-width:0; min-height:20px; max-height:100px; padding:2px 0; border:none; background:transparent; color:var(--txt); font-family:var(--font); font-size:13px; line-height:1.5; resize:none; outline:none; white-space:pre-wrap; word-wrap:break-word; }
+.c-input::placeholder { color:var(--txt3); }
+.c-send { width:28px; height:28px; border-radius:7px; border:none; background:var(--blue); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; }
+.c-send:hover { background:#3b7ef6; }
+.c-send:disabled { background:var(--bg3); cursor:not-allowed; }
+.c-send svg { width:12px; height:12px; }
+.composer-footer { display:flex; align-items:center; justify-content:space-between; margin-top:5px; padding:0 1px; }
+.cfoot-left { display:flex; align-items:center; gap:6px; }
+.hint { display:inline-flex; align-items:center; gap:3px; font-size:10px; color:var(--txt3); }
+.hint-key { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:2px; background:var(--bg3); border:1px solid var(--line2); font-size:9px; font-family:var(--mono); color:var(--txt2); }
+.cfoot-right { font-size:10px; color:var(--txt3); }
 
-/* ── COMPOSER ── */
-.composer {
-  background: var(--bg1);
-  border-top: 1px solid var(--line);
-  padding: 8px 10px 10px;
-  flex-shrink: 0;
+/* SLASH COMMAND DROPDOWN */
+.slash-drop {
+  position:absolute; bottom:calc(100% + 4px); left:10px; right:10px;
+  background:var(--bg2); border:1px solid var(--line2); border-radius:10px;
+  overflow:hidden; box-shadow:0 -8px 24px rgba(0,0,0,.4); z-index:100;
+  max-height:220px; overflow-y:auto;
 }
-.attachment-strip { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
-.attachment-strip:empty { display: none; }
-.att-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 7px; border-radius: 4px;
-  background: var(--bg3); border: 1px solid var(--line);
-  font-size: 10px; font-family: var(--mono); color: var(--txt2);
-  max-width: 180px;
+.slash-drop::-webkit-scrollbar { width:3px; }
+.slash-drop::-webkit-scrollbar-thumb { background:var(--bg3); }
+.slash-header { padding:6px 10px; font-size:9px; font-weight:700; color:var(--txt3); text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--line); }
+.slash-item {
+  display:flex; align-items:center; gap:9px; padding:8px 10px; cursor:pointer;
+  transition:background .1s;
 }
-.att-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.att-chip button {
-  background: none; border: none; color: var(--txt3);
-  cursor: pointer; font-size: 12px; line-height: 1; padding: 0;
-}
-.att-chip button:hover { color: var(--red); }
+.slash-item:hover,.slash-item.active { background:var(--bg3); }
+.slash-cmd { font-family:var(--mono); font-size:11px; color:var(--blue); min-width:100px; font-weight:500; }
+.slash-desc { font-size:11px; color:var(--txt2); }
+.slash-kbd { margin-left:auto; font-size:9px; color:var(--txt3); font-family:var(--mono); flex-shrink:0; }
 
-.composer-box {
-  display: flex; align-items: flex-end; gap: 7px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--bg2); border: 1px solid var(--line2);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.composer-box:focus-within {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px rgba(79,142,247,0.1);
-}
-.c-btn {
-  width: 26px; height: 26px; border-radius: 5px;
-  border: none; background: transparent; color: var(--txt3);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s; font-family: var(--font); flex-shrink: 0;
-}
-.c-btn:hover { background: var(--bg3); color: var(--txt2); }
-.c-btn svg { width: 14px; height: 14px; }
-.composer-tools { display: flex; gap: 1px; flex-shrink: 0; }
+/* connect banner */
+.connect-banner { margin:10px; padding:12px 14px; border-radius:10px; background:rgba(79,142,247,.07); border:1px solid rgba(79,142,247,.18); }
+.connect-banner h4 { font-size:12px; font-weight:600; color:#7eb8f9; margin-bottom:5px; }
+.connect-banner p  { font-size:11px; color:var(--txt2); line-height:1.6; margin-bottom:10px; }
+.connect-banner button { padding:6px 12px; border-radius:6px; background:var(--blue); color:#fff; border:none; font-size:11px; font-weight:600; cursor:pointer; }
 
-.c-input {
-  flex: 1; min-width: 0;
-  min-height: 20px; max-height: 110px;
-  padding: 3px 0;
-  border: none; background: transparent;
-  color: var(--txt); font-family: var(--font);
-  font-size: 13px; line-height: 1.5;
-  resize: none; outline: none;
-  /* CRITICAL */
-  white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
-}
-.c-input::placeholder { color: var(--txt3); }
-
-.c-send {
-  width: 30px; height: 30px; border-radius: 7px;
-  border: none; background: var(--blue); color: #fff;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s; flex-shrink: 0; font-family: var(--font);
-}
-.c-send:hover { background: #3b7ef6; transform: scale(1.05); }
-.c-send:disabled { background: var(--bg3); cursor: not-allowed; transform: none; }
-.c-send svg { width: 13px; height: 13px; }
-
-.composer-footer {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  margin-top: 6px; padding: 0 1px;
-}
-.cfoot-left { display: flex; align-items: center; gap: 7px; }
-.slash-hint {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; color: var(--txt3);
-}
-.slash-key {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 14px; height: 14px; border-radius: 2px;
-  background: var(--bg3); border: 1px solid var(--line2);
-  font-size: 9px; font-family: var(--mono); color: var(--txt2);
-}
-.cfoot-right { font-size: 10px; color: var(--txt3); white-space: nowrap; }
-
-/* ── MENTION DROPDOWN ── */
-.mention-drop {
-  position: absolute;
-  bottom: calc(100% + 6px); left: 0; right: 0;
-  background: var(--bg2); border: 1px solid var(--line2);
-  border-radius: 8px; overflow: hidden;
-  box-shadow: 0 -6px 24px rgba(0,0,0,0.4); z-index: 100;
-  max-height: 180px; overflow-y: auto;
-}
-.mention-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; cursor: pointer;
-}
-.mention-item:hover { background: var(--bg3); }
-.mention-ext {
-  font-family: var(--mono); font-size: 9px; color: var(--blue);
-  background: rgba(79,142,247,0.1); padding: 1px 5px; border-radius: 2px;
-  flex-shrink: 0; white-space: nowrap;
-}
-.mention-name { font-size: 11.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mention-path { font-size: 10px; color: var(--txt3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-#file-input, #image-input { display: none; }
+#file-input { display:none; }
 </style>
 </head>
 <body>
@@ -533,408 +225,449 @@ body {
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-left">
-    <div class="brand-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-      </svg>
+    <div class="brand-logo" id="brand-logo-wrap">
+      <img src="__LOGO_URI__" alt="DevMind" id="brand-img" />
     </div>
     <span class="brand-name">DevMind</span>
   </div>
-
-  <div class="topbar-center">
-    <button class="model-pill">
-      <span class="model-dot"></span>
-      AI
-      <span style="opacity:0.5;font-size:9px;">▾</span>
-    </button>
-  </div>
-
   <div class="topbar-right">
-    <button class="icon-btn" id="btn-history" title="History">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-        <path d="M3 3v5h5M12 7v5l4 2"/>
-      </svg>
+    <button class="icon-btn" id="btn-scaffold" title="Project Scaffolding (Ctrl+Shift+S)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17.5h7M17.5 14v7"/></svg>
     </button>
     <button class="icon-btn" id="btn-new" title="New chat">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 5v14M5 12h14"/>
-      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
     </button>
-    <button class="icon-btn" id="btn-settings" title="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
+    <button class="icon-btn" id="btn-settings" title="Account & Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
     </button>
-    <button class="avatar-btn">A</button>
   </div>
 </div>
 
-<!-- CONTEXT BAR -->
+<!-- CONTEXT BAR (project intelligence) -->
 <div class="ctx-bar" id="ctx-bar">
-  <span class="ctx-label">Context</span>
-  <div class="ctx-file"><span class="ext">ts</span>&nbsp;index.ts</div>
-  <div class="ctx-file"><span class="ext">json</span>&nbsp;package.json</div>
-  <button class="ctx-add">
-    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-    Add file
-  </button>
+  <div class="ctx-pill lang"><span class="dot"></span><span id="ctx-lang">TS</span></div>
+  <div class="ctx-pill fw"  id="ctx-fw-pill" style="display:none"><span class="dot"></span><span id="ctx-fw">—</span></div>
+  <div class="ctx-pill db"  id="ctx-db-pill" style="display:none"><span class="dot"></span><span id="ctx-db">—</span></div>
+  <div class="ctx-pill auth" id="ctx-auth-pill" style="display:none"><span class="dot"></span><span id="ctx-auth">—</span></div>
+  <div class="ctx-pill model"><span class="dot"></span>DeepSeek</div>
 </div>
 
 <!-- MESSAGES -->
 <div class="messages" id="messages"></div>
 
+<!-- SLASH DROPDOWN (hidden by default) -->
+<div class="slash-drop" id="slash-drop" style="display:none"></div>
+
 <!-- COMPOSER -->
-<div class="composer" style="position:relative;">
-  <div class="attachment-strip" id="attachment-strip"></div>
+<div class="composer">
+  <div class="att-strip" id="att-strip"></div>
   <div class="composer-box">
-    <div class="composer-tools">
-      <button class="c-btn" id="btn-attach" title="Attach file">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-        </svg>
-      </button>
-      <button class="c-btn" id="btn-image" title="Attach image">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <circle cx="8.5" cy="8.5" r="1.5"/>
-          <polyline points="21 15 16 10 5 21"/>
-        </svg>
-      </button>
-    </div>
-    <textarea class="c-input" id="input" rows="1" placeholder="Ask DevMind anything… (@ to mention a file)"></textarea>
+    <button class="c-btn" id="btn-attach" title="Attach file">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+    </button>
+    <textarea class="c-input" id="input" rows="1" placeholder="Ask DevMind… (/ for commands, @ for files)"></textarea>
     <button class="c-send" id="send">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <line x1="22" y1="2" x2="11" y2="13"/>
-        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
   <div class="composer-footer">
     <div class="cfoot-left">
-      <span class="slash-hint"><span class="slash-key">/</span> commands</span>
-      <span class="slash-hint"><span class="slash-key">@</span> files</span>
+      <span class="hint"><span class="hint-key">/</span> commands</span>
+      <span class="hint"><span class="hint-key">⇧↵</span> newline</span>
     </div>
-    <span class="cfoot-right" id="usage-label">Ready</span>
+    <span class="cfoot-right" id="usage-lbl">—</span>
   </div>
 </div>
 
-<input type="file" id="file-input" accept=".ts,.js,.tsx,.jsx,.json,.md,.css,.html,.py,.go,.rs,.java" multiple />
-<input type="file" id="image-input" accept="image/*" multiple />
+<input type="file" id="file-input" accept=".ts,.js,.tsx,.jsx,.json,.md,.css,.html,.py,.go,.rs,.java,.txt,.yaml,.yml,.env,.sh" multiple />
 
 <script>
-const vscode = typeof acquireVsCodeApi !== 'undefined' ? acquireVsCodeApi() : { postMessage: () => {} };
-const hasApiKey = typeof __HAS_API_KEY__ !== 'undefined' ? __HAS_API_KEY__ : false;
+var HAS_API_KEY = ('__HAS_API_KEY__' === 'true');
+var vscode = (typeof acquireVsCodeApi !== 'undefined') ? acquireVsCodeApi() : { postMessage: function(){} };
 
-const msgsEl    = document.getElementById('messages');
-const inputEl   = document.getElementById('input');
-const sendBtn   = document.getElementById('send');
-const fileInput = document.getElementById('file-input');
-const imgInput  = document.getElementById('image-input');
-const attStrip  = document.getElementById('attachment-strip');
-const usageLbl  = document.getElementById('usage-label');
+var msgsEl   = document.getElementById('messages');
+var inputEl  = document.getElementById('input');
+var sendBtn  = document.getElementById('send');
+var fileInp  = document.getElementById('file-input');
+var attStrip = document.getElementById('att-strip');
+var usageLbl = document.getElementById('usage-lbl');
+var slashDrop = document.getElementById('slash-drop');
 
-let sending = false;
-let currentBotRow = null;
-let attachments = [];
-let mentionMode = false;
-let mentionStart = 0;
+var sending       = false;
+var currentBotRow = null;
+var rawBuffer     = '';
+var attachments   = [];
+var slashIdx      = -1;
 
-// ── WELCOME ──
-function showWelcome() {
-  msgsEl.innerHTML = '';
-  const items = [
-    { color:'blue',   icon:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',  title:'Explain file',  prompt:'Explain what the current file does' },
-    { color:'green',  icon:'<polyline points="20 6 9 17 4 12"/>',             title:'Write tests',   prompt:'Write unit tests for the current file' },
-    { color:'amber',  icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',  title:'Find bugs', prompt:'Review this code and find any issues' },
-    { color:'purple', icon:'<path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',  title:'Refactor',  prompt:'Refactor this code for clarity and performance' },
-  ];
+// ── SLASH COMMANDS ────────────────────────────────────────────────────────────
+var SLASH_CMDS = [
+  { cmd:'/explain',     desc:'Explain selected code',         kbd:'Ctrl+Shift+E' },
+  { cmd:'/explainfile', desc:'Explain the entire open file',  kbd:'Ctrl+Shift+D' },
+  { cmd:'/fix',         desc:'Fix bugs in selected code',     kbd:'Ctrl+Shift+F' },
+  { cmd:'/refactor',    desc:'Refactor selected code',        kbd:'' },
+  { cmd:'/test',        desc:'Generate unit tests',           kbd:'Ctrl+Shift+T' },
+  { cmd:'/generate',    desc:'Generate from description',     kbd:'Ctrl+Shift+G' },
+  { cmd:'/scaffold',    desc:'Scaffold auth, CRUD, API…',     kbd:'Ctrl+Shift+S' },
+  { cmd:'/clear',       desc:'Clear chat history',            kbd:'' },
+];
 
-  const div = document.createElement('div');
-  div.className = 'welcome';
-  div.innerHTML = `
-    <div class="welcome-logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-      </svg>
-    </div>
-    <h2>How can I help?</h2>
-    <p>Ask me to explain, write, debug, or refactor code in your workspace.</p>
-    <div class="quick-actions">
-      ${items.map(item => `
-        <div class="qa-item" data-prompt="${item.prompt}">
-          <div class="qa-icon ${item.color}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${item.icon}</svg>
-          </div>
-          <div class="qa-text">
-            <div class="qa-title">${item.title}</div>
-            <div class="qa-sub">${item.prompt}</div>
-          </div>
-          <span class="qa-arrow">›</span>
-        </div>
-      `).join('')}
-    </div>
-  `;
-
-  div.querySelectorAll('.qa-item').forEach(el => {
-    el.onclick = () => { inputEl.value = el.dataset.prompt; inputEl.focus(); autoResize(); };
+function showSlash(filter) {
+  var cmds = SLASH_CMDS.filter(function(c) {
+    return !filter || c.cmd.includes(filter.toLowerCase());
   });
-  msgsEl.appendChild(div);
-}
-
-// ── MARKDOWN PARSER ──
-function parseMarkdown(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    // Undo escaping for code blocks
-    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-      const l = lang || 'code';
-      return `<div class="code-wrap"><div class="code-head"><span class="code-lang">${l}</span><div class="code-actions-row"><button class="code-btn" onclick="copyCode(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button><button class="code-btn" onclick="insertCode(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Insert</button></div></div><pre><code>${code.trim()}</code></pre></div>`;
-    })
-    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?<\/li>)/g, m => '<ul>' + m + '</ul>')
-    .split('\n\n').map(block => {
-      if (block.startsWith('<')) return block;
-      return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+  if (!cmds.length) { hideSlash(); return; }
+  slashIdx = -1;
+  slashDrop.innerHTML = '<div class="slash-header">Commands</div>' +
+    cmds.map(function(c, i) {
+      return '<div class="slash-item" data-cmd="' + c.cmd + '" data-idx="' + i + '">' +
+        '<span class="slash-cmd">' + c.cmd + '</span>' +
+        '<span class="slash-desc">' + c.desc + '</span>' +
+        (c.kbd ? '<span class="slash-kbd">' + c.kbd + '</span>' : '') +
+        '</div>';
     }).join('');
-}
-
-// Safer version that doesn't double-escape (for incremental tokens)
-function safeParseMarkdown(text) {
-  if (!text) return '';
-  try { return parseMarkdown(text); } catch(e) { return '<p>' + text + '</p>'; }
-}
-
-// ── ADD USER MSG ──
-function addUserMsg(text) {
-  const row = document.createElement('div');
-  row.className = 'msg-row user';
-  const bubble = document.createElement('div');
-  bubble.className = 'user-bubble';
-  bubble.textContent = text; // use textContent to avoid XSS
-  row.appendChild(bubble);
-  msgsEl.appendChild(row);
-  scroll();
-}
-
-// ── ADD BOT MSG ──
-function addBotMsg(html) {
-  const row = document.createElement('div');
-  row.className = 'msg-row bot';
-  row.innerHTML = `
-    <div class="bot-row">
-      <div class="bot-avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-      </div>
-      <div class="bot-content">
-        <div class="bot-label">DevMind</div>
-        <div class="bot-bubble"><div class="md">${html}</div></div>
-      </div>
-    </div>
-  `;
-  msgsEl.appendChild(row);
-  scroll();
-  return row;
-}
-
-// ── THINKING ──
-function showThinking() {
-  removeThinking();
-  const row = document.createElement('div');
-  row.className = 'msg-row bot';
-  row.id = 'thinking';
-  row.innerHTML = `
-    <div class="thinking-row">
-      <div class="bot-avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-      </div>
-      <div class="thinking-body">
-        <div class="dots"><span></span><span></span><span></span></div>
-        <span class="thinking-label">Generating…</span>
-        <button class="stop-btn" onclick="stopGen()">Stop</button>
-      </div>
-    </div>
-  `;
-  msgsEl.appendChild(row);
-  scroll();
-  return row;
-}
-
-function removeThinking() {
-  document.getElementById('thinking')?.remove();
-}
-
-// ── SEND ──
-function sendMessage() {
-  const text = inputEl.value.trim();
-  if (!text || sending) return;
-  msgsEl.querySelector('.welcome')?.remove();
-  addUserMsg(text);
-  inputEl.value = '';
-  autoResize();
-  sending = true;
-  sendBtn.disabled = true;
-  currentBotRow = null;
-  showThinking();
-  vscode.postMessage({ type: 'chat', text, attachments: [...attachments] });
-  attachments = [];
-  renderAttachments();
-}
-
-window.stopGen = function() {
-  vscode.postMessage({ type: 'stopGeneration' });
-  removeThinking();
-  if (currentBotRow) { currentBotRow.remove(); currentBotRow = null; }
-  sending = false;
-  sendBtn.disabled = false;
-};
-
-window.copyCode = function(btn) {
-  const code = btn.closest('.code-wrap').querySelector('code').textContent;
-  navigator.clipboard.writeText(code).then(() => {
-    btn.classList.add('ok');
-    const orig = btn.innerHTML;
-    btn.textContent = '✓ Copied';
-    setTimeout(() => { btn.classList.remove('ok'); btn.innerHTML = orig; }, 2000);
+  slashDrop.querySelectorAll('.slash-item').forEach(function(el) {
+    el.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      selectSlash(el.dataset.cmd);
+    });
   });
-};
-
-window.insertCode = function(btn) {
-  const code = btn.closest('.code-wrap').querySelector('code').textContent;
-  vscode.postMessage({ type: 'insertCode', code });
-  btn.classList.add('ok');
-  btn.textContent = '✓ Inserted';
-};
-
-// ── ATTACHMENTS ──
-function renderAttachments() {
-  if (!attachments.length) { attStrip.innerHTML = ''; return; }
-  attStrip.innerHTML = attachments.map((a,i) => `
-    <div class="att-chip">
-      <span>${a.name}</span>
-      <button onclick="removeAtt(${i})">×</button>
-    </div>`).join('');
+  slashDrop.style.display = 'block';
 }
-window.removeAtt = function(i) { attachments.splice(i,1); renderAttachments(); };
 
+function hideSlash() { slashDrop.style.display = 'none'; slashIdx = -1; }
+
+function selectSlash(cmd) {
+  inputEl.value = cmd + ' ';
+  autoResize();
+  hideSlash();
+  inputEl.focus();
+}
+
+function navigateSlash(dir) {
+  var items = slashDrop.querySelectorAll('.slash-item');
+  if (!items.length) return;
+  items.forEach(function(el) { el.classList.remove('active'); });
+  slashIdx = (slashIdx + dir + items.length) % items.length;
+  items[slashIdx].classList.add('active');
+  items[slashIdx].scrollIntoView({ block:'nearest' });
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 function scroll() { msgsEl.scrollTop = msgsEl.scrollHeight; }
 function autoResize() {
   inputEl.style.height = 'auto';
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 110) + 'px';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
 }
 
-inputEl.addEventListener('input', autoResize);
-inputEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-});
-sendBtn.onclick = sendMessage;
-document.getElementById('btn-new').onclick    = () => vscode.postMessage({ type: 'clear' });
-document.getElementById('btn-settings').onclick = () => vscode.postMessage({ type: 'openOnboarding' });
-document.getElementById('btn-history').onclick  = () => {};
+// ── MARKDOWN ──────────────────────────────────────────────────────────────────
+function renderMarkdown(raw) {
+  if (!raw) return '';
+  var blocks = [];
+  var text = raw.replace(/```(\w*)\n?([\s\S]*?)```/g, function(_, lang, code) {
+    var l = esc(lang || 'code');
+    var c = esc(code.trim());
+    var idx = blocks.length;
+    blocks.push(
+      '<div class="code-wrap">' +
+      '<div class="code-head">' +
+      '<span class="code-lang">' + l + '</span>' +
+      '<div class="code-acts">' +
+      '<button class="code-btn" onclick="doCopy(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>' +
+      '<button class="code-btn" onclick="doInsert(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Insert</button>' +
+      '</div></div><pre><code>' + c + '</code></pre></div>'
+    );
+    return '\x00B' + idx + '\x00';
+  });
+  text = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^#{1} (.+)$/gm,'<h1>$1</h1>')
+    .replace(/^#{2} (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^#{3} (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^---$/gm,'<hr>')
+    .replace(/^[\-\*] (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, function(m) { return '<ul>' + m + '</ul>'; });
+  text = text.replace(/\x00B(\d+)\x00/g, function(_, i) { return blocks[parseInt(i)]; });
+  var parts = text.split(/\n{2,}/);
+  return parts.map(function(p) {
+    if (/^<[hud]|<div|<pre|<hr/.test(p.trim())) return p;
+    return '<p>' + p.replace(/\n/g,'<br>') + '</p>';
+  }).join('');
+}
 
-fileInput.onchange = async () => {
-  for (const f of fileInput.files) {
-    try { const c = await f.text(); attachments.push({ type:'file', name:f.name, content:c }); } catch{}
-  }
-  renderAttachments(); fileInput.value = '';
-};
-imgInput.onchange = async () => {
-  for (const f of imgInput.files) {
-    const r = new FileReader();
-    r.onload = () => { attachments.push({ type:'image', name:f.name, dataUrl:r.result }); renderAttachments(); };
-    r.readAsDataURL(f);
-  }
-  imgInput.value = '';
-};
-document.getElementById('btn-attach').onclick = () => fileInput.click();
-document.getElementById('btn-image').onclick  = () => imgInput.click();
+// ── WELCOME ───────────────────────────────────────────────────────────────────
+function showWelcome() {
+  msgsEl.innerHTML = '';
+  rawBuffer = '';
+  currentBotRow = null;
 
-// ── VSCODE MESSAGE HANDLER ──
-window.addEventListener('message', e => {
-  const m = e.data;
-  if (!m || !m.type) return;
-
-  if (m.type === 'thinking') {
-    if (m.show) showThinking(); else removeThinking();
+  if (!HAS_API_KEY) {
+    var banner = document.createElement('div');
+    banner.className = 'connect-banner';
+    banner.innerHTML =
+      '<h4>Connect your account</h4>' +
+      '<p>Enter your Gmail in the DevMind dashboard, verify with OTP, and paste your API key here.</p>' +
+      '<button onclick="vscode.postMessage({type:\'openOnboarding\'})">Open dashboard</button>';
+    msgsEl.appendChild(banner);
     return;
   }
+
+  var items = [
+    { cls:'blue',   icon:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',  t:'Explain file',     s:'Understand the current file',      p:'Explain what the current file does, key functions, and architecture' },
+    { cls:'green',  icon:'<polyline points="20 6 9 17 4 12"/>',             t:'Write tests',      s:'Generate test coverage',           p:'Write comprehensive unit tests for the selected code' },
+    { cls:'amber',  icon:'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',  t:'Find bugs',        s:'Review code for issues',          p:'Review this code and find all potential bugs, security issues, and improvements' },
+    { cls:'purple', icon:'<path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',  t:'Refactor code',    s:'Improve quality & performance',    p:'Refactor the selected code for clarity, performance, and best practices' },
+    { cls:'red',    icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17.5h7M17.5 14v7"/>',  t:'Scaffold module',  s:'Generate auth, CRUD, API…',       p:'/scaffold' },
+  ];
+
+  var html = '<div class="welcome">' +
+    '<div class="welcome-logo"><img src="__LOGO_URI__" alt="DM" onerror="this.parentElement.innerHTML=\'<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;white&quot; stroke-width=&quot;2.5&quot; width=&quot;22&quot; height=&quot;22&quot;><path d=&quot;M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5&quot;/></svg>\'" /></div>' +
+    '<h2>How can I help?</h2>' +
+    '<p>Use slash commands, attach files, or ask anything about your code.</p>' +
+    '<div class="quick-actions">' +
+    items.map(function(item) {
+      return '<div class="qa-item" data-prompt="' + esc(item.p) + '">' +
+        '<div class="qa-icon ' + item.cls + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + item.icon + '</svg></div>' +
+        '<div class="qa-text"><div class="qa-title">' + esc(item.t) + '</div><div class="qa-sub">' + esc(item.s) + '</div></div>' +
+        '<span class="qa-arrow">›</span></div>';
+    }).join('') +
+    '</div></div>';
+
+  msgsEl.innerHTML = html;
+  msgsEl.querySelectorAll('.qa-item').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var p = el.dataset.prompt;
+      if (p.startsWith('/')) { vscode.postMessage({ type:'slash', command: p.slice(1), args:'' }); }
+      else { inputEl.value = p; inputEl.focus(); autoResize(); }
+    });
+  });
+}
+
+// ── ADD MESSAGES ──────────────────────────────────────────────────────────────
+function addUserMsg(text) {
+  var row = document.createElement('div'); row.className = 'msg-row user';
+  var b = document.createElement('div'); b.className = 'user-bubble'; b.textContent = text;
+  row.appendChild(b); msgsEl.appendChild(row); scroll();
+}
+
+function makeBotRow() {
+  var row = document.createElement('div'); row.className = 'msg-row bot';
+  row.innerHTML =
+    '<div class="bot-row">' +
+    '<div class="bot-avatar"><img src="__LOGO_URI__" alt="DM" onerror="this.style.display=\'none\'" /></div>' +
+    '<div class="bot-content">' +
+    '<div class="bot-label">DevMind</div>' +
+    '<div class="bot-bubble"><div class="md" data-raw=""></div></div>' +
+    '</div></div>';
+  return row;
+}
+
+function showThinking() {
+  removeThinking();
+  var row = document.createElement('div'); row.className = 'msg-row bot'; row.id = 'thinking';
+  row.innerHTML =
+    '<div class="thinking-row">' +
+    '<div class="bot-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>' +
+    '<div class="thinking-body"><div class="dots"><span></span><span></span><span></span></div>' +
+    '<span class="thinking-label">Thinking…</span>' +
+    '<button class="stop-btn" onclick="stopGen()">Stop</button></div></div>';
+  msgsEl.appendChild(row); scroll();
+}
+function removeThinking() { var t = document.getElementById('thinking'); if(t) t.remove(); }
+
+function addErrMsg(text) {
+  var row = document.createElement('div'); row.className = 'msg-row bot';
+  row.innerHTML = '<div class="err-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>' + esc(text) + '</span></div>';
+  msgsEl.appendChild(row); scroll();
+}
+
+// ── SEND ──────────────────────────────────────────────────────────────────────
+function sendMessage() {
+  var text = inputEl.value.trim();
+  if (!text || sending) return;
+
+  // Check for slash command
+  if (text.startsWith('/')) {
+    var parts = text.slice(1).split(' ');
+    var cmd = parts[0].toLowerCase();
+    var args = parts.slice(1).join(' ');
+    inputEl.value = ''; autoResize(); hideSlash();
+    if (cmd === 'clear') { vscode.postMessage({ type:'clear' }); return; }
+    vscode.postMessage({ type:'slash', command:cmd, args:args });
+    return;
+  }
+
+  msgsEl.querySelector('.welcome') && msgsEl.querySelector('.welcome').remove();
+  addUserMsg(text);
+  inputEl.value = ''; autoResize();
+  sending = true; sendBtn.disabled = true;
+  currentBotRow = null; rawBuffer = '';
+  showThinking();
+  vscode.postMessage({ type:'chat', text:text, attachments:attachments.slice() });
+  attachments = []; renderAttachments();
+}
+
+window.stopGen = function() {
+  vscode.postMessage({ type:'stopGeneration' });
+  removeThinking();
+  if (currentBotRow) { currentBotRow.remove(); currentBotRow = null; }
+  rawBuffer = ''; sending = false; sendBtn.disabled = false;
+};
+window.doCopy = function(btn) {
+  var code = btn.closest('.code-wrap').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(function() {
+    btn.classList.add('ok'); var orig = btn.innerHTML;
+    btn.textContent = '✓ Copied';
+    setTimeout(function() { btn.classList.remove('ok'); btn.innerHTML = orig; }, 2000);
+  });
+};
+window.doInsert = function(btn) {
+  var code = btn.closest('.code-wrap').querySelector('code').textContent;
+  vscode.postMessage({ type:'insertCode', code:code });
+  btn.classList.add('ok'); var orig = btn.innerHTML;
+  btn.textContent = '✓ Inserted';
+  setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('ok'); }, 2000);
+};
+
+// ── ATTACHMENTS ───────────────────────────────────────────────────────────────
+function renderAttachments() {
+  if (!attachments.length) { attStrip.innerHTML = ''; return; }
+  attStrip.innerHTML = attachments.map(function(a, i) {
+    return '<div class="att-chip"><span>' + esc(a.name) + '</span><button onclick="removeAtt(' + i + ')">×</button></div>';
+  }).join('');
+}
+window.removeAtt = function(i) { attachments.splice(i,1); renderAttachments(); };
+
+fileInp.addEventListener('change', function() {
+  var files = Array.from(fileInp.files);
+  Promise.all(files.map(function(f) {
+    return f.text().then(function(c) { attachments.push({ type:'file', name:f.name, content:c }); }).catch(function(){});
+  })).then(renderAttachments);
+  fileInp.value = '';
+});
+
+// ── INPUT EVENTS ──────────────────────────────────────────────────────────────
+inputEl.addEventListener('input', function() {
+  autoResize();
+  var val = inputEl.value;
+  if (val === '/') { showSlash(''); return; }
+  if (val.startsWith('/') && !val.includes(' ')) { showSlash(val.slice(1)); return; }
+  hideSlash();
+});
+
+inputEl.addEventListener('keydown', function(e) {
+  if (slashDrop.style.display !== 'none') {
+    if (e.key === 'ArrowDown')  { e.preventDefault(); navigateSlash(1); return; }
+    if (e.key === 'ArrowUp')    { e.preventDefault(); navigateSlash(-1); return; }
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      var active = slashDrop.querySelector('.slash-item.active');
+      if (active) { e.preventDefault(); selectSlash(active.dataset.cmd); return; }
+      if (e.key === 'Tab') { e.preventDefault(); var first = slashDrop.querySelector('.slash-item'); if(first) selectSlash(first.dataset.cmd); return; }
+    }
+    if (e.key === 'Escape') { hideSlash(); return; }
+  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+document.addEventListener('click', function(e) {
+  if (!slashDrop.contains(e.target) && e.target !== inputEl) hideSlash();
+});
+
+// ── BUTTON HANDLERS ───────────────────────────────────────────────────────────
+sendBtn.addEventListener('click', sendMessage);
+document.getElementById('btn-new').addEventListener('click', function() { vscode.postMessage({ type:'clear' }); });
+document.getElementById('btn-settings').addEventListener('click', function() { vscode.postMessage({ type:'openOnboarding' }); });
+document.getElementById('btn-scaffold').addEventListener('click', function() { vscode.postMessage({ type:'scaffold' }); });
+document.getElementById('btn-attach').addEventListener('click', function() { fileInp.click(); });
+
+// ── VSCODE MESSAGE HANDLER ────────────────────────────────────────────────────
+window.addEventListener('message', function(e) {
+  var m = e.data;
+  if (!m || !m.type) return;
+
+  if (m.type === 'thinking') { if(m.show) showThinking(); else removeThinking(); return; }
 
   if (m.type === 'token') {
     if (!m.text) return;
     removeThinking();
-    if (!currentBotRow) {
-      currentBotRow = addBotMsg('');
-    }
-    const md = currentBotRow.querySelector('.md');
-    if (md) {
-      // Append raw text, re-render at 'done'
-      md.dataset.raw = (md.dataset.raw || '') + m.text;
-      md.innerHTML = safeParseMarkdown(md.dataset.raw);
-      scroll();
-    }
+    if (!currentBotRow) { currentBotRow = makeBotRow(); msgsEl.appendChild(currentBotRow); }
+    rawBuffer += m.text;
+    var md = currentBotRow.querySelector('.md');
+    if (md) { md.innerHTML = renderMarkdown(rawBuffer); scroll(); }
     return;
   }
 
   if (m.type === 'done') {
     removeThinking();
+    var finalText = m.text || rawBuffer;
     if (currentBotRow) {
-      const md = currentBotRow.querySelector('.md');
-      if (md) { md.innerHTML = safeParseMarkdown(m.text); delete md.dataset.raw; }
-    } else {
-      addBotMsg(safeParseMarkdown(m.text));
+      var md2 = currentBotRow.querySelector('.md');
+      if (md2) { md2.innerHTML = renderMarkdown(finalText); }
+    } else if (finalText) {
+      var r = makeBotRow(); msgsEl.appendChild(r);
+      var md3 = r.querySelector('.md');
+      if (md3) { md3.innerHTML = renderMarkdown(finalText); }
     }
-    currentBotRow = null;
-    sending = false;
-    sendBtn.disabled = false;
-    scroll();
+    currentBotRow = null; rawBuffer = '';
+    sending = false; sendBtn.disabled = false; scroll();
     return;
   }
 
   if (m.type === 'error') {
     removeThinking();
     if (currentBotRow) { currentBotRow.remove(); currentBotRow = null; }
-    const row = document.createElement('div');
-    row.className = 'msg-row bot';
-    row.innerHTML = `<div class="err-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${m.text || 'An error occurred.'}</span></div>`;
-    msgsEl.appendChild(row); scroll();
+    rawBuffer = '';
+    addErrMsg(m.text || 'An error occurred.');
     sending = false; sendBtn.disabled = false;
     return;
   }
 
   if (m.type === 'warning') {
-    const row = document.createElement('div');
-    row.className = 'msg-row bot';
-    row.innerHTML = `<div class="warn-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>${m.text || ''}</span></div>`;
-    msgsEl.appendChild(row); scroll();
+    var wr = document.createElement('div'); wr.className = 'msg-row bot';
+    wr.innerHTML = '<div class="warn-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>' + esc(m.text||'') + '</span></div>';
+    msgsEl.appendChild(wr); scroll();
+    return;
+  }
+
+  if (m.type === 'info') {
+    var ir = document.createElement('div'); ir.className = 'msg-row bot';
+    ir.innerHTML = '<div class="info-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>' + esc(m.text||'') + '</span></div>';
+    msgsEl.appendChild(ir); scroll();
     return;
   }
 
   if (m.type === 'cleared') { showWelcome(); return; }
 
   if (m.type === 'usage') {
-    if (m.hasApiKey) {
-      usageLbl.textContent = m.remaining + ' req left';
-    } else {
-      usageLbl.textContent = 'Not connected';
+    usageLbl.textContent = m.hasApiKey
+      ? (m.remaining + ' left · ' + (m.plan||'free').toUpperCase())
+      : 'Not connected';
+
+    // Update context bar
+    if (m.language) document.getElementById('ctx-lang').textContent = m.language.toUpperCase().slice(0,3);
+    if (m.framework && m.framework !== 'Node.js') {
+      document.getElementById('ctx-fw').textContent = m.framework;
+      document.getElementById('ctx-fw-pill').style.display = '';
+    }
+    if (m.database && m.database !== 'none') {
+      document.getElementById('ctx-db').textContent = m.database;
+      document.getElementById('ctx-db-pill').style.display = '';
+    }
+    if (m.authSystem && m.authSystem !== 'none') {
+      document.getElementById('ctx-auth').textContent = m.authSystem;
+      document.getElementById('ctx-auth-pill').style.display = '';
     }
     return;
   }
 });
 
-// Init
+// ── INIT ──────────────────────────────────────────────────────────────────────
 showWelcome();
-vscode.postMessage({ type: 'getUsage' });
+vscode.postMessage({ type:'getUsage' });
 </script>
 </body>
 </html>

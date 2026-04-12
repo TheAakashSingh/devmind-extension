@@ -1,59 +1,45 @@
-import * as fs   from 'fs';
-import * as path from 'path';
+import * as fs     from 'fs';
+import * as path   from 'path';
 import * as vscode from 'vscode';
-import { DeepSeekClient } from '../utils/deepseekClient';
-import { UsageTracker }   from '../utils/usageTracker';
+import { DeepSeekClient }            from '../utils/deepseekClient';
+import { UsageTracker }              from '../utils/usageTracker';
+import { collectProjectContext, collectFileContext, buildContextPrompt, optimizePrompt } from '../utils/contextCollector';
 
-interface Attachment {
-  type: 'file' | 'image';
-  name: string;
-  content?: string;
-  path?: string;
-  dataUrl?: string;
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  attachments?: Attachment[];
-  timestamp?: number;
-}
+interface Attachment { type: 'file'; name: string; content: string; }
+interface ChatMsg    { role: 'user' | 'assistant'; content: string; }
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
-  private view?: vscode.WebviewView;
-  private history: ChatMessage[] = [];
-  private isStreaming = false;
+  private view?:     vscode.WebviewView;
+  private history:   ChatMsg[] = [];
+  private streaming = false;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly client: DeepSeekClient,
-    private readonly usage: UsageTracker,
+    private readonly client:       DeepSeekClient,
+    private readonly usage:        UsageTracker,
     private readonly dashboardUrl: string
   ) {}
 
   resolveWebviewView(view: vscode.WebviewView) {
     this.view = view;
     view.webview.options = {
-      enableScripts: true,
+      enableScripts:      true,
       localResourceRoots: [this.extensionUri],
     };
-    this.render();
+    view.webview.html = this.buildHtml(view.webview);
 
-    view.webview.onDidReceiveMessage(async (message) => {
-      switch (message.type) {
-        case 'chat':          await this.handleChat(message.text, message.attachments || []); break;
-        case 'clear':         this.clearChat(); break;
-        case 'insertCode':    this.insertIntoEditor(message.code); break;
-        case 'applyCode':     await this.applyCodeToFile(message.code, message.filePath, message.mode || 'insert'); break;
-        case 'replaceCode':   await this.replaceCodeInFile(message.code, message.filePath, message.oldCode); break;
-        case 'getUsage':      this.sendUsage(); break;
-        case 'getFiles':      await this.sendOpenFiles(); break;
-        case 'searchFiles':   await this.searchFilesHandler(message.query); break;
-        case 'readFile':      await this.readFileHandler(message.path); break;
-        case 'openDashboard': await vscode.env.openExternal(vscode.Uri.parse(this.dashboardUrl)); break;
-        case 'openOnboarding':await vscode.commands.executeCommand('devmind.openOnboarding'); break;
-        case 'setKey':        await vscode.commands.executeCommand('devmind.setKey'); break;
-        case 'stopGeneration':this.isStreaming = false; break;
+    view.webview.onDidReceiveMessage(async (msg) => {
+      switch (msg.type) {
+        case 'chat':           await this.handleChat(msg.text, msg.attachments || []); break;
+        case 'slash':          await this.handleSlash(msg.command, msg.args || '');    break;
+        case 'clear':          this.clearChat();                                       break;
+        case 'insertCode':     this.insertCode(msg.code);                              break;
+        case 'getUsage':       this.sendUsage();                                       break;
+        case 'openOnboarding': vscode.commands.executeCommand('devmind.openOnboarding'); break;
+        case 'openDashboard':  vscode.env.openExternal(vscode.Uri.parse(this.dashboardUrl)); break;
+        case 'setKey':         vscode.commands.executeCommand('devmind.setKey');       break;
+        case 'stopGeneration': this.streaming = false;                                 break;
+        case 'scaffold':       vscode.commands.executeCommand('devmind.scaffold');     break;
       }
     });
 
@@ -62,270 +48,162 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   refresh() {
     if (!this.view) { return; }
-    this.render();
-  }
-
-  private render() {
-    if (!this.view) { return; }
-    this.view.webview.html = this.getHtml();
+    this.view.webview.html = this.buildHtml(this.view.webview);
     this.sendUsage();
   }
 
-  private hasApiKey(): boolean {
-    return Boolean(vscode.workspace.getConfiguration('devmind').get<string>('apiKey', ''));
-  }
+  // ── Slash command router ──────────────────────────────────────────────────
+  private async handleSlash(command: string, args: string) {
+    const cmds: Record<string, string> = {
+      explain:     'devmind.explain',
+      explainfile: 'devmind.explainFile',
+      fix:         'devmind.fix',
+      refactor:    'devmind.refactor',
+      test:        'devmind.generateTests',
+      tests:       'devmind.generateTests',
+      scaffold:    'devmind.scaffold',
+      auth:        'devmind.createAuth',
+      crud:        'devmind.createCrud',
+      api:         'devmind.createApi',
+      schema:      'devmind.createSchema',
+      clear:       '',
+    };
 
-  // ── File context helpers ──
+    if (command === 'clear') { this.clearChat(); return; }
 
-  private parseMentions(text: string): { cleanText: string; mentions: string[] } {
-    const mentions: string[] = [];
-    const cleanText = text.replace(/@([^\s]+)/g, (_, name) => {
-      mentions.push(name);
-      return '';
-    });
-    return { cleanText: cleanText.trim(), mentions };
-  }
-
-  private async getActiveFileContext(): Promise<string> {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) { return ''; }
-
-    const doc          = editor.document;
-    const fileName     = path.basename(doc.fileName);
-    const language     = doc.languageId;
-    const content      = doc.getText();
-    const selection    = editor.selection;
-    const selectedCode = !selection.isEmpty ? doc.getText(selection) : '';
-    const cursor       = editor.selection.active;
-
-    let ctx = `\n\n=== ACTIVE FILE: ${fileName} (${language}) ===\n`;
-    ctx    += `Cursor: Line ${cursor.line + 1}, Col ${cursor.character + 1}\n`;
-
-    if (selectedCode) {
-      ctx += `\n--- Selected (lines ${selection.start.line + 1}–${selection.end.line + 1}) ---\n${selectedCode}\n`;
+    if (command === 'generate' && args) {
+      await this.handleChat(`Generate: ${args}`, []);
+      return;
     }
-    ctx += `\n--- File Content ---\n${content}`;
-    return ctx;
+
+    const vsCmd = cmds[command];
+    if (vsCmd) {
+      this.post({ type: 'info', text: `Running: /${command}…` });
+      await vscode.commands.executeCommand(vsCmd);
+    } else {
+      // Unknown slash — treat as chat
+      await this.handleChat(`/${command} ${args}`.trim(), []);
+    }
   }
 
-  private async getProjectContext(): Promise<string> {
-    const workspace = vscode.workspace.workspaceFolders?.[0];
-    if (!workspace) { return ''; }
-
-    const root           = workspace.uri.fsPath;
-    const packageJsonPath = path.join(root, 'package.json');
-    let ctx = '\n\n=== PROJECT CONTEXT ===\n';
-
-    try {
-      if (fs.existsSync(packageJsonPath)) {
-        const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        ctx += `Project: ${pkg.name || 'Unknown'}\n`;
-        ctx += `Scripts: ${Object.keys(pkg.scripts || {}).slice(0, 5).join(', ')}\n`;
-      }
-    } catch { /* ignore */ }
-
-    const openFiles = vscode.workspace.textDocuments
-      .filter(d => !d.isUntitled)
-      .slice(0, 5)
-      .map(d => path.basename(d.fileName));
-    if (openFiles.length) { ctx += `Open files: ${openFiles.join(', ')}\n`; }
-
-    return ctx;
-  }
-
-  private buildContextMessage(attachments: Attachment[]): string {
-    return attachments
-      .filter(a => a.type === 'file' && a.content)
-      .map(a => {
-        const ext = path.extname(a.name).slice(1) || 'text';
-        return `\n\n=== ATTACHED FILE: ${a.name} ===\n\`\`\`${ext}\n${a.content}\n\`\`\``;
-      })
-      .join('');
-  }
-
-  // ── Chat handler ──
-
+  // ── Main chat handler ──────────────────────────────────────────────────────
   private async handleChat(text: string, attachments: Attachment[]) {
-    if (!this.hasApiKey()) {
-      this.post({ type: 'error', text: 'Connect your DevMind account first. Open the dashboard, verify your email, and paste your API key.' });
+    const apiKey = vscode.workspace.getConfiguration('devmind').get<string>('apiKey', '');
+    if (!apiKey) {
+      this.post({ type: 'error', text: 'Connect your account first — click the account icon above or run DevMind: Set API Key.' });
       return;
     }
     if (!this.usage.canComplete()) {
-      this.post({ type: 'error', text: 'Daily quota reached. Upgrade your plan in the DevMind dashboard to continue.' });
+      this.post({ type: 'error', text: `Daily quota reached (${this.usage.getPlan()} plan). Upgrade at the DevMind dashboard.` });
       return;
     }
 
-    // Filter images — DeepSeek doesn't support them yet
-    const fileAtts  = attachments.filter(a => a.type !== 'image');
-    const imageAtts = attachments.filter(a => a.type === 'image');
-    if (imageAtts.length) {
-      this.post({ type: 'warning', text: `${imageAtts.length} image(s) skipped — image support coming soon!` });
+    this.streaming = true;
+
+    // Build project + file context
+    const proj      = collectProjectContext();
+    const file      = collectFileContext();
+    const ctxPrompt = buildContextPrompt(proj, file);
+    const optimized = optimizePrompt(text, proj);
+
+    // File attachment context
+    const fileCtx = attachments
+      .filter(a => a.content)
+      .map(a => `\n\n[Attached: ${a.name}]\n\`\`\`\n${a.content}\n\`\`\``)
+      .join('');
+
+    const fullText = optimized + fileCtx;
+
+    // Inject context as system context on first message
+    if (this.history.length === 0) {
+      this.history.push({ role: 'user', content: `[CONTEXT]\n${ctxPrompt}\n\n[QUESTION]\n${fullText}` });
+    } else {
+      this.history.push({ role: 'user', content: fullText });
     }
 
-    this.isStreaming = true;
-    const { cleanText } = this.parseMentions(text);
-    const language = vscode.window.activeTextEditor?.document.languageId || 'typescript';
-
     this.post({ type: 'thinking', show: true });
-
-    const fileCtx    = await this.getActiveFileContext();
-    const projectCtx = await this.getProjectContext();
-    const attCtx     = this.buildContextMessage(fileAtts);
-
-    const enhancedContent = cleanText + projectCtx + fileCtx + attCtx;
-
-    this.history.push({ role: 'user', content: enhancedContent, attachments: fileAtts, timestamp: Date.now() });
 
     let reply = '';
     try {
       reply = await this.client.chat(
-        this.history.map(h => ({ role: h.role, content: h.content })),
-        language,
+        this.history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+        file?.language || proj.language || 'typescript',
         (token: string) => {
-          if (this.isStreaming) { this.post({ type: 'token', text: token }); }
+          if (this.streaming) { this.post({ type: 'token', text: token }); }
         }
       );
-    } catch (error: any) {
+    } catch (err: any) {
       this.post({ type: 'thinking', show: false });
-      this.post({ type: 'error', text: error.message || 'Request failed. Check your connection.' });
+      this.post({ type: 'error', text: err.message || 'Request failed. Check your server connection and API key.' });
       this.history.pop();
-      this.isStreaming = false;
+      this.streaming = false;
       return;
     }
 
-    this.isStreaming = false;
-    this.history.push({ role: 'assistant', content: reply, timestamp: Date.now() });
+    this.streaming = false;
+    this.history.push({ role: 'assistant', content: reply });
     this.post({ type: 'done', text: reply });
     this.usage.record();
     this.sendUsage();
   }
 
-  // ── Code actions ──
-
+  // ── Helpers ────────────────────────────────────────────────────────────────
   private clearChat() {
-    this.history    = [];
-    this.isStreaming = false;
+    this.history   = [];
+    this.streaming = false;
     this.post({ type: 'cleared' });
   }
 
-  private insertIntoEditor(code: string) {
+  private insertCode(code: string) {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showWarningMessage('Open a file first to insert code.');
-      return;
-    }
-    const extracted = this.extractCodeFromMarkdown(code);
-    editor.edit(b => b.insert(editor.selection.active, extracted));
-    vscode.window.showInformationMessage('DevMind: Code inserted at cursor.');
-  }
-
-  private extractCodeFromMarkdown(code: string): string {
-    const block = code.match(/```(?:\w+)?\n([\s\S]*?)```/);
-    if (block) { return block[1].trim(); }
-    return code.trim();
-  }
-
-  private async applyCodeToFile(code: string, filePath?: string, _mode = 'insert') {
-    try {
-      const extracted = this.extractCodeFromMarkdown(code);
-      if (filePath && fs.existsSync(filePath)) {
-        const existing = fs.readFileSync(filePath, 'utf8');
-        fs.writeFileSync(filePath, existing + '\n\n' + extracted, 'utf8');
-        this.post({ type: 'applied', message: `Appended to ${path.basename(filePath)}`, filePath });
-        await vscode.window.showTextDocument(vscode.Uri.file(filePath));
-      } else {
-        this.insertIntoEditor(extracted);
-      }
-    } catch (e: any) {
-      this.post({ type: 'error', text: `Failed to apply code: ${e.message}` });
-    }
-  }
-
-  private async replaceCodeInFile(code: string, filePath: string, oldCode: string) {
-    try {
-      if (!fs.existsSync(filePath)) {
-        this.post({ type: 'error', text: 'File not found.' });
-        return;
-      }
-      const full     = fs.readFileSync(filePath, 'utf8');
-      const replaced = full.replace(oldCode, code);
-      fs.writeFileSync(filePath, replaced, 'utf8');
-      this.post({ type: 'applied', message: `Replaced code in ${path.basename(filePath)}`, filePath });
-      await vscode.window.showTextDocument(vscode.Uri.file(filePath));
-    } catch (e: any) {
-      this.post({ type: 'error', text: `Failed to replace code: ${e.message}` });
-    }
-  }
-
-  // ── File utilities ──
-
-  private async sendOpenFiles() {
-    const files: Array<{ name: string; path: string; language: string }> = [];
-    for (const doc of vscode.workspace.textDocuments) {
-      if (!doc.isUntitled) {
-        files.push({ name: path.basename(doc.fileName), path: doc.fileName, language: doc.languageId });
-      }
-    }
-    const editor = vscode.window.activeTextEditor;
-    if (editor && !files.find(f => f.path === editor.document.fileName)) {
-      files.unshift({
-        name:     path.basename(editor.document.fileName),
-        path:     editor.document.fileName,
-        language: editor.document.languageId,
-      });
-    }
-    this.post({ type: 'files', files });
-  }
-
-  private async searchFilesHandler(query: string) {
-    try {
-      const results = await this.client.searchFiles(query);
-      this.post({ type: 'searchResults', results });
-    } catch {
-      this.post({ type: 'searchResults', results: [] });
-    }
-  }
-
-  private async readFileHandler(filePath: string) {
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      this.post({ type: 'fileContent', path: filePath, content });
-    } catch (e: any) {
-      this.post({ type: 'error', text: `Failed to read file: ${e.message}` });
-    }
+    if (!editor) { vscode.window.showWarningMessage('DevMind: Open a file to insert code into.'); return; }
+    const clean = code.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim();
+    editor.edit(b => b.insert(editor.selection.active, clean));
+    vscode.window.showInformationMessage('DevMind: Code inserted.');
   }
 
   private sendUsage() {
+    const apiKey = vscode.workspace.getConfiguration('devmind').get<string>('apiKey', '');
+    let proj;
+    try { proj = collectProjectContext(); } catch { proj = { framework:'', language:'typescript', database:'none', authSystem:'none' } as any; }
     this.post({
-      type:      'usage',
-      remaining: this.usage.getRemaining(),
-      plan:      this.usage.getPlan(),
-      hasApiKey: this.hasApiKey(),
+      type:       'usage',
+      remaining:  this.usage.getRemaining(),
+      plan:       this.usage.getPlan(),
+      hasApiKey:  Boolean(apiKey),
+      language:   proj.language,
+      framework:  proj.framework,
+      database:   proj.database,
+      authSystem: proj.authSystem,
     });
   }
 
-  private post(message: object) {
-    this.view?.webview.postMessage(message);
-  }
+  private post(msg: object) { this.view?.webview.postMessage(msg); }
 
-  // ── HTML loader ──
+  // ── Build HTML ─────────────────────────────────────────────────────────────
+  private buildHtml(webview: vscode.Webview): string {
+    const logoUri   = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'assets', 'logo.png')).toString();
+    const apiKey    = vscode.workspace.getConfiguration('devmind').get<string>('apiKey', '');
+    const cspSource = webview.cspSource;
 
-  private getHtml(): string {
-    const htmlPath = path.join(this.extensionUri.fsPath, 'src', 'webview', 'chat.html');
-
-    try {
-      const html    = fs.readFileSync(htmlPath, 'utf8');
-      const webview = this.view!.webview;
-      const logoUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this.extensionUri, 'assets', 'logo.png')
-      ).toString();
-
-      return html
-        .replace(/__HAS_API_KEY__/g,  this.hasApiKey() ? 'true' : 'false')
-        .replace(/__CSP_SOURCE__/g,   webview.cspSource)
-        .replace(/__LOGO_URI__/g,     logoUri);
-    } catch {
-      return '<html><body style="color:#e2e8f0;font-family:sans-serif;padding:20px;">Unable to load DevMind UI. Run <code>npm run build</code> and reload.</body></html>';
+    const candidates = [
+      path.join(this.extensionUri.fsPath, 'src',  'webview', 'chat.html'),
+      path.join(this.extensionUri.fsPath, 'dist', 'webview', 'chat.html'),
+    ];
+    let html = '';
+    for (const p of candidates) {
+      if (fs.existsSync(p)) { html = fs.readFileSync(p, 'utf8'); break; }
     }
+    if (!html) {
+      return `<html><body style="color:#e2e8f0;font-family:sans-serif;padding:20px">
+        <h3>DevMind failed to load</h3>
+        <p>Run <code>npm run build</code> in the extension folder and reload VS Code.</p>
+      </body></html>`;
+    }
+
+    return html
+      .replace(/__HAS_API_KEY__/g, Boolean(apiKey) ? 'true' : 'false')
+      .replace(/__CSP_SOURCE__/g,  cspSource)
+      .replace(/__LOGO_URI__/g,    logoUri);
   }
 }

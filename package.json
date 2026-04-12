@@ -1,161 +1,83 @@
 {
   "name": "devmind-ai",
   "displayName": "DevMind AI by SinghJitech",
-  "description": "DevMind AI brings inline autocomplete, chat, code generation, bug fixing, and refactoring to VS Code.",
-  "version": "1.0.14",
+  "description": "AI coding assistant — inline autocomplete, chat, project-aware generation, scaffolding, multi-file refactor & more. Powered by DeepSeek.",
+  "version": "2.1.0",
   "publisher": "DevmindAi",
   "license": "MIT",
-  "engines": {
-    "vscode": "^1.85.0"
-  },
-  "categories": [
-    "AI",
-    "Other"
-  ],
-  "keywords": [
-    "ai",
-    "vscode",
-    "autocomplete",
-    "chat",
-    "deepseek",
-    "coding assistant",
-    "refactor",
-    "code generation"
-  ],
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["AI", "Other"],
+  "keywords": ["ai","autocomplete","deepseek","copilot","coding assistant","refactor","scaffold","code generation","testing","devmind"],
   "icon": "assets/logo.png",
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "devmind.explain",
-        "title": "DevMind: Explain Code"
-      },
-      {
-        "command": "devmind.fix",
-        "title": "DevMind: Fix Bug"
-      },
-      {
-        "command": "devmind.generate",
-        "title": "DevMind: Generate Function"
-      },
-      {
-        "command": "devmind.refactor",
-        "title": "DevMind: Refactor Code"
-      },
-      {
-        "command": "devmind.chat",
-        "title": "DevMind: Open Chat"
-      },
-      {
-        "command": "devmind.setKey",
-        "title": "DevMind: Set API Key"
-      },
-      {
-        "command": "devmind.openDashboard",
-        "title": "DevMind: Open Dashboard"
-      },
-      {
-        "command": "devmind.openOnboarding",
-        "title": "DevMind: Sign In"
-      },
-      {
-        "command": "devmind.signOut",
-        "title": "DevMind: Sign Out"
-      }
+      { "command": "devmind.explain",         "title": "Explain Code",                "category": "DevMind" },
+      { "command": "devmind.explainFile",      "title": "Explain Entire File",         "category": "DevMind" },
+      { "command": "devmind.fix",              "title": "Fix Bug",                     "category": "DevMind" },
+      { "command": "devmind.generate",         "title": "Generate Function",           "category": "DevMind" },
+      { "command": "devmind.generateTests",    "title": "Generate Tests",              "category": "DevMind" },
+      { "command": "devmind.refactor",         "title": "Refactor Code",               "category": "DevMind" },
+      { "command": "devmind.multiRefactor",    "title": "Multi-File Refactor",         "category": "DevMind" },
+      { "command": "devmind.scaffold",         "title": "Project Scaffolding",         "category": "DevMind" },
+      { "command": "devmind.createAuth",       "title": "Create Auth System",          "category": "DevMind" },
+      { "command": "devmind.createApi",        "title": "Create REST API",             "category": "DevMind" },
+      { "command": "devmind.createCrud",       "title": "Create CRUD Module",          "category": "DevMind" },
+      { "command": "devmind.createSchema",     "title": "Create DB Schema",            "category": "DevMind" },
+      { "command": "devmind.createAdmin",      "title": "Create Admin Panel",          "category": "DevMind" },
+      { "command": "devmind.createServer",     "title": "Create Express Server",       "category": "DevMind" },
+      { "command": "devmind.chat",             "title": "Open Chat",                   "category": "DevMind" },
+      { "command": "devmind.setKey",           "title": "Set API Key",                 "category": "DevMind" },
+      { "command": "devmind.openDashboard",    "title": "Open Dashboard",              "category": "DevMind" },
+      { "command": "devmind.openOnboarding",   "title": "Sign In / Account",           "category": "DevMind" },
+      { "command": "devmind.signOut",          "title": "Sign Out",                    "category": "DevMind" },
+      { "command": "devmind.toggleInline",     "title": "Toggle Inline Autocomplete",  "category": "DevMind" }
     ],
     "keybindings": [
-      {
-        "command": "devmind.explain",
-        "key": "ctrl+shift+e",
-        "mac": "cmd+shift+e",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "devmind.fix",
-        "key": "ctrl+shift+f",
-        "mac": "cmd+shift+f",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "devmind.generate",
-        "key": "ctrl+shift+g",
-        "mac": "cmd+shift+g"
-      }
+      { "command": "devmind.explain",       "key": "ctrl+shift+e", "mac": "cmd+shift+e", "when": "editorHasSelection" },
+      { "command": "devmind.fix",           "key": "ctrl+shift+f", "mac": "cmd+shift+f", "when": "editorHasSelection" },
+      { "command": "devmind.generate",      "key": "ctrl+shift+g", "mac": "cmd+shift+g" },
+      { "command": "devmind.explainFile",   "key": "ctrl+shift+d", "mac": "cmd+shift+d" },
+      { "command": "devmind.generateTests", "key": "ctrl+shift+t", "mac": "cmd+shift+t", "when": "editorHasSelection" },
+      { "command": "devmind.scaffold",      "key": "ctrl+shift+s", "mac": "cmd+shift+s" }
     ],
     "menus": {
       "editor/context": [
-        {
-          "command": "devmind.explain",
-          "group": "devmind@1",
-          "when": "editorHasSelection"
-        },
-        {
-          "command": "devmind.fix",
-          "group": "devmind@2",
-          "when": "editorHasSelection"
-        },
-        {
-          "command": "devmind.refactor",
-          "group": "devmind@3",
-          "when": "editorHasSelection"
-        }
+        { "command": "devmind.explain",       "group": "devmind@1", "when": "editorHasSelection" },
+        { "command": "devmind.fix",           "group": "devmind@2", "when": "editorHasSelection" },
+        { "command": "devmind.refactor",      "group": "devmind@3", "when": "editorHasSelection" },
+        { "command": "devmind.generateTests", "group": "devmind@4", "when": "editorHasSelection" },
+        { "command": "devmind.explainFile",   "group": "devmind@5" }
       ]
     },
     "viewsContainers": {
       "activitybar": [
-        {
-          "id": "devmind-sidebar",
-          "title": "DevMind AI by SinghJitech",
-          "icon": "assets/logo.png"
-        }
+        { "id": "devmind-sidebar", "title": "DevMind AI", "icon": "assets/logo.png" }
       ]
     },
     "views": {
       "devmind-sidebar": [
-        {
-          "type": "webview",
-          "id": "devmind.chatView",
-          "name": "Chat"
-        }
+        { "type": "webview", "id": "devmind.chatView", "name": "AI Chat" }
       ]
     },
     "configuration": {
-      "title": "DevMind AI by SinghJitech",
+      "title": "DevMind AI",
       "properties": {
-        "devmind.apiKey": {
-          "type": "string",
-          "description": "Your DevMind API key from the dashboard",
-          "default": ""
-        },
-        "devmind.serverUrl": {
-          "type": "string",
-          "description": "Backend server URL",
-          "default": "https://api-devmind.singhjitech.com"
-        },
-        "devmind.dashboardUrl": {
-          "type": "string",
-          "description": "Dashboard URL",
-          "default": "https://app-devmind.singhjitech.com"
-        },
-        "devmind.enableInline": {
-          "type": "boolean",
-          "description": "Enable inline autocomplete",
-          "default": true
-        },
-        "devmind.inlineDelay": {
-          "type": "number",
-          "description": "Autocomplete trigger delay (ms)",
-          "default": 350
-        }
+        "devmind.apiKey":        { "type": "string",  "description": "DevMind API key from the dashboard",                    "default": "" },
+        "devmind.serverUrl":     { "type": "string",  "description": "Backend server URL",                                    "default": "https://api-devmind.singhjitech.com" },
+        "devmind.dashboardUrl":  { "type": "string",  "description": "Dashboard URL",                                         "default": "https://app-devmind.singhjitech.com" },
+        "devmind.enableInline":  { "type": "boolean", "description": "Enable inline autocomplete",                            "default": true },
+        "devmind.inlineDelay":   { "type": "number",  "description": "Autocomplete trigger delay (ms)",                       "default": 350 },
+        "devmind.contextLines":  { "type": "number",  "description": "Lines of context for autocomplete",                     "default": 60 },
+        "devmind.projectAware":  { "type": "boolean", "description": "Enable project-aware intelligence (reads package.json)","default": true },
+        "devmind.autoContext":   { "type": "boolean", "description": "Auto-attach active file context to chat messages",      "default": true }
       }
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "watch": "tsc -watch -p tsconfig.json",
+    "build":   "tsc -p tsconfig.json",
+    "watch":   "tsc -watch -p tsconfig.json",
     "package": "vsce package"
   },
   "dependencies": {
@@ -163,8 +85,8 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.3.0",
-    "@vscode/vsce": "^2.22.0"
+    "@types/node":   "^20.0.0",
+    "typescript":    "^5.3.0",
+    "@vscode/vsce":  "^2.22.0"
   }
 }

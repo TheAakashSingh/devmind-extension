@@ -1,42 +1,21 @@
 import axios, { AxiosInstance } from 'axios';
 
-// ─── DeepSeek models ──────────────────────────────────────────────────────────
-// deepseek-chat   → fast, cheap — $0.07/$0.28 per 1M tokens — use for everything
-// deepseek-coder  → code-specific — same price — use for generate/fix
-const MODEL_CHAT  = 'deepseek-chat';
-const MODEL_CODER = 'deepseek-coder';
+// ── Model routing — right model for right task ────────────────────────────────
+const MODELS = {
+  autocomplete: 'deepseek-chat',    // fast, cheap
+  chat:         'deepseek-chat',    // reasoning
+  fix:          'deepseek-coder',   // code analysis
+  generate:     'deepseek-coder',   // structured generation
+  scaffold:     'deepseek-coder',   // large code generation
+  tests:        'deepseek-coder',   // test generation
+  refactor:     'deepseek-coder',   // code transformation
+  explain:      'deepseek-chat',    // natural language
+};
 
-// ─── Prompt builders ──────────────────────────────────────────────────────────
-function sysPrompt(lang: string, file = '') {
-  return `You are an expert ${lang} developer assistant inside VS Code.${file ? ` File: ${file}` : ''}
-Rules:
-- Return ONLY code unless asked to explain
-- No markdown fences (no triple backticks)
-- Match existing code style exactly
-- Be concise and production-ready`;
-}
-
-function completionPrompt(prefix: string, suffix: string, lang: string) {
-  return `Continue this ${lang} code. Output ONLY the completion at <CURSOR>. No explanation, no fences.
-
-${prefix}<CURSOR>${suffix}`;
-}
-
-function actionPrompt(action: string, code: string, lang: string) {
-  const map: Record<string, string> = {
-    explain:  `Explain this ${lang} code in plain English. Be concise:\n\n${code}`,
-    fix:      `Fix all bugs in this ${lang} code. Return only the fixed code:\n\n${code}`,
-    refactor: `Refactor this ${lang} code for clarity, performance and best practices. Return only the refactored code:\n\n${code}`,
-  };
-  return map[action] || code;
-}
-
-// ─── Main client ──────────────────────────────────────────────────────────────
 export class DeepSeekClient {
   private http: AxiosInstance;
 
   constructor(private serverUrl: string, private apiKey: string) {
-    // We call YOUR backend which holds the DeepSeek key — never expose it in extension
     this.http = axios.create({
       baseURL: serverUrl,
       timeout: 30_000,
@@ -52,122 +31,182 @@ export class DeepSeekClient {
   updateConfig(serverUrl: string, apiKey: string) {
     this.serverUrl = serverUrl;
     this.apiKey    = apiKey;
-    this.http.defaults.baseURL = serverUrl;
+    this.http.defaults.baseURL              = serverUrl;
     this.http.defaults.headers['x-api-key'] = apiKey;
   }
 
   // ── Inline autocomplete ────────────────────────────────────────────────────
   async complete(params: {
-    prefix: string;
-    suffix: string;
-    language: string;
-    fileName: string;
+    prefix:      string;
+    suffix:      string;
+    language:    string;
+    fileName:    string;
+    projectCtx?: string;
   }): Promise<string> {
     const res = await this.http.post('/v1/complete', {
-      model:    MODEL_CHAT,
-      prefix:   params.prefix,
-      suffix:   params.suffix,
-      language: params.language,
-      fileName: params.fileName,
+      model:      MODELS.autocomplete,
+      prefix:     params.prefix,
+      suffix:     params.suffix,
+      language:   params.language,
+      fileName:   params.fileName,
+      projectCtx: params.projectCtx,
     });
-    return res.data.completion ?? '';
+    return (res.data.completion ?? '').trim();
   }
 
-  // ── Code actions ───────────────────────────────────────────────────────────
+  // ── Code actions (explain / fix / refactor) ────────────────────────────────
   async action(
-    type: 'explain' | 'fix' | 'refactor',
-    code: string,
-    language: string
+    type:       'explain' | 'fix' | 'refactor',
+    code:       string,
+    language:   string,
+    contextPrompt?: string
   ): Promise<string> {
     const res = await this.http.post('/v1/action', {
-      model:    type === 'fix' ? MODEL_CODER : MODEL_CHAT,
+      model:    MODELS[type] || MODELS.explain,
       type,
       code,
       language,
+      contextPrompt,
     });
-    return res.data.result ?? '';
+    return (res.data.result ?? '').trim();
+  }
+
+  // ── Explain entire file ────────────────────────────────────────────────────
+  async explainFile(
+    content:   string,
+    fileName:  string,
+    language:  string,
+    projectCtx?: string
+  ): Promise<string> {
+    const res = await this.http.post('/v1/explain-file', {
+      model:      MODELS.explain,
+      content,
+      fileName,
+      language,
+      projectCtx,
+    });
+    return (res.data.result ?? '').trim();
   }
 
   // ── Generate from prompt ───────────────────────────────────────────────────
-  async generate(prompt: string, language: string): Promise<string> {
+  async generate(
+    prompt:     string,
+    language:   string,
+    projectCtx?: string
+  ): Promise<string> {
     const res = await this.http.post('/v1/generate', {
-      model: MODEL_CODER,
+      model:      MODELS.generate,
       prompt,
       language,
+      projectCtx,
     });
-    return res.data.code ?? '';
+    return (res.data.code ?? '').trim();
   }
 
-  // ── Chat (sidebar) ─────────────────────────────────────────────────────────
-  async chat(
-    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
-    language: string,
-    onToken?: (t: string) => void
+  // ── Generate tests ────────────────────────────────────────────────────────
+  async generateTests(
+    code:       string,
+    language:   string,
+    fileName:   string,
+    projectCtx?: string
   ): Promise<string> {
-    const systemMessage = `You are an expert ${language} developer assistant inside VS Code. Rules:
-- When providing code, use markdown code blocks with proper syntax highlighting
-- Be concise and production-ready
-- You have access to the user's open files and can read/write files to disk when requested`;
-
-    const formattedMessages = [
-      { role: 'system' as const, content: systemMessage },
-      ...messages.filter(m => m.role !== 'system')
-    ];
-
-    const res = await this.http.post('/v1/chat', {
-      model:    MODEL_CHAT,
-      messages: formattedMessages,
+    const res = await this.http.post('/v1/generate-tests', {
+      model:      MODELS.tests,
+      code,
       language,
-      stream:   !!onToken,
-    }, {
-      responseType: onToken ? 'stream' : 'json',
+      fileName,
+      projectCtx,
     });
-
-    if (!onToken) return res.data.reply ?? '';
-
-    return new Promise((resolve, reject) => {
-      let full = '';
-      res.data.on('data', (chunk: Buffer) => {
-        const raw = chunk.toString();
-        console.log('[Extension] Raw chunk length:', raw.length);
-        raw.split('\n')
-          .filter((l: string) => l.startsWith('data: ') && !l.includes('[DONE]'))
-          .forEach((l: string) => {
-            try {
-              const j = JSON.parse(l.slice(6));
-              const t = j.choices?.[0]?.delta?.content ?? '';
-              console.log('[Extension] Token:', t.substring(0, 50));
-              full += t;
-              if (onToken) onToken(t);
-            } catch (e: any) {
-              console.log('[Extension] Parse error:', e.message);
-            }
-          });
-      });
-      res.data.on('end',   () => { console.log('[Extension] Done, full length:', full.length); resolve(full); });
-      res.data.on('error', (e: Error) => { console.log('[Extension] Stream error:', e.message); reject(e); });
-    });
+    return (res.data.tests ?? '').trim();
   }
 
-  // ── Read file content ───────────────────────────────────────────────────────
-  async readFile(path: string): Promise<string> {
-    const res = await this.http.post('/v1/files/read', { path });
-    return res.data.content ?? '';
-  }
-
-  // ── Write file to disk ──────────────────────────────────────────────────────
-  async writeFile(path: string, content: string): Promise<{ success: boolean; message: string }> {
-    const res = await this.http.post('/v1/files/write', { path, content });
+  // ── Scaffold (one-command generators) ────────────────────────────────────
+  async scaffold(params: {
+    type:       string;  // 'auth' | 'crud' | 'api' | 'schema' | 'admin' | 'custom'
+    name:       string;  // e.g. "order", "user"
+    language:   string;
+    projectCtx: string;
+  }): Promise<{ files: Array<{ path: string; content: string }> }> {
+    const res = await this.http.post('/v1/scaffold', {
+      model:      MODELS.scaffold,
+      ...params,
+    });
     return res.data;
   }
 
-  // ── Search files ────────────────────────────────────────────────────────────
+  // ── Multi-file refactor ───────────────────────────────────────────────────
+  async multiRefactor(params: {
+    instruction: string;
+    files:       Array<{ path: string; content: string }>;
+    language:    string;
+    projectCtx:  string;
+  }): Promise<{ files: Array<{ path: string; content: string; summary: string }> }> {
+    const res = await this.http.post('/v1/multi-refactor', {
+      model: MODELS.refactor,
+      ...params,
+    });
+    return res.data;
+  }
+
+  // ── Chat — streaming or JSON ───────────────────────────────────────────────
+  async chat(
+    messages:    Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    language:    string,
+    onToken?:    (t: string) => void
+  ): Promise<string> {
+    const useStream = Boolean(onToken);
+    const res = await this.http.post(
+      '/v1/chat',
+      { model: MODELS.chat, messages, language, stream: useStream },
+      { responseType: useStream ? 'stream' : 'json', timeout: 60_000 }
+    );
+
+    if (!useStream) { return (res.data.reply ?? '').trim(); }
+
+    return new Promise<string>((resolve, reject) => {
+      let full    = '';
+      let partial = '';
+
+      res.data.on('data', (chunk: Buffer) => {
+        const raw = partial + chunk.toString();
+        partial   = '';
+        const lines = raw.split('\n');
+        const last  = lines.pop() ?? '';
+        if (last) { partial = last; }
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === ': ping' || trimmed === 'data: [DONE]') { continue; }
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const json  = JSON.parse(trimmed.slice(6));
+              const token = json.choices?.[0]?.delta?.content ?? '';
+              if (token && onToken) { full += token; onToken(token); }
+            } catch {}
+          }
+        }
+      });
+      res.data.on('end',   () => resolve(full));
+      res.data.on('error', (err: Error) => reject(err));
+    });
+  }
+
+  // ── File utilities ─────────────────────────────────────────────────────────
+  async readFile(filePath: string): Promise<string> {
+    const res = await this.http.post('/v1/files/read', { path: filePath });
+    return res.data.content ?? '';
+  }
+
+  async writeFile(filePath: string, content: string): Promise<{ success: boolean; message: string }> {
+    const res = await this.http.post('/v1/files/write', { path: filePath, content });
+    return res.data;
+  }
+
   async searchFiles(query: string): Promise<Array<{ path: string; preview: string }>> {
     const res = await this.http.post('/v1/files/search', { query });
     return res.data.results ?? [];
   }
 
-  // ── Validate key ───────────────────────────────────────────────────────────
+  // ── Validate API key ───────────────────────────────────────────────────────
   async validate(): Promise<{ valid: boolean; plan: string; remaining: number }> {
     try {
       const res = await this.http.get('/v1/auth/validate');
