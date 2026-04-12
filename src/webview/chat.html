@@ -157,7 +157,11 @@
   .suggestion-desc { font-size: 11px; color: var(--text-muted); }
 
   /* ── Chat Bubbles ── */
-  .msg { max-width: 100%; }
+  .msg { max-width: 100%; animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .msg.user {
     display: flex; justify-content: flex-end;
   }
@@ -173,22 +177,23 @@
     display: flex; gap: 12px;
   }
   .msg-bot-avatar {
-    width: 28px; height: 28px; flex-shrink: 0;
-    border-radius: 8px;
+    width: 32px; height: 32px; flex-shrink: 0;
+    border-radius: 10px;
     background: linear-gradient(135deg, var(--accent-purple), var(--accent));
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 12px; color: #fff;
+    font-weight: 700; font-size: 14px; color: #fff;
+    box-shadow: 0 2px 8px rgba(163,113,247,0.3);
   }
-  .msg-bot-content { flex: 1; }
+  .msg-bot-content { flex: 1; min-width: 0; }
   .msg-bot-header {
     display: flex; align-items: center; gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
   .msg-bot-name { font-weight: 600; font-size: 13px; }
   .msg-bot-time { font-size: 11px; color: var(--text-dim); }
   .msg-bubble {
     padding: 16px;
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--bg-elev);
     border: 1px solid var(--border);
     line-height: 1.6;
@@ -816,15 +821,33 @@ imageInput.onchange = async () => {
 window.addEventListener('message', e => {
   const m = e.data;
   
-  if (m.type === 'token') {
-    hideThinking();
-    if (currentBot) {
-      const content = currentBot.querySelector('.msg-content');
-      if (content) content.innerHTML += parseMarkdown(m.text).replace(/<div class="msg-content">|<\/div>/g, '');
-      messages.scrollTop = messages.scrollHeight;
+  // Debug log
+  console.log('Received message:', m.type);
+  
+  // Handle thinking indicator - only show it
+  if (m.type === 'thinking') {
+    if (m.show) {
+      showThinking();
+    } else {
+      hideThinking();
     }
+    return;
   }
   
+  // Token streaming - update content but don't hide thinking yet
+  if (m.type === 'token') {
+    // Only hide thinking if we actually have content
+    if (m.text && m.text.trim()) {
+      if (currentBot) {
+        const content = currentBot.querySelector('.msg-content');
+        if (content) content.innerHTML += parseMarkdown(m.text).replace(/<div class="msg-content">|<\/div>/g, '');
+        messages.scrollTop = messages.scrollHeight;
+      }
+    }
+    return;
+  }
+  
+  // Done - hide thinking and show final response
   if (m.type === 'done') {
     hideThinking();
     if (currentBot) {
@@ -858,6 +881,7 @@ window.addEventListener('message', e => {
   }
   
   if (m.type === 'warning') {
+    hideThinking();
     if (currentBot) { currentBot.remove(); currentBot = null; }
     addMessage('warning', m.text);
     sending = false;

@@ -242,7 +242,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     this.isStreaming = false;
-    this.post({ type: 'thinking', show: false });
+    // Don't hide thinking here - let the UI hide it when it receives 'done'
     this.history.push({ role: 'assistant', content: reply, timestamp: Date.now() });
     this.post({ type: 'done', text: reply, hasCode: this.hasCodeBlock(reply) });
     this.usage.record();
