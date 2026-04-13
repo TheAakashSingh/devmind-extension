@@ -85,6 +85,21 @@ These preferences are applied across the product and synced into extension chat 
 ### 🔄 Multi-File Refactor
 Rename a service, update an interface, change a pattern — across your entire project. DevMind shows you exactly which files change and what changes before applying anything.
 
+### 🛡 Verification Loop (Lint/Test/Build)
+Run a full reliability pass directly from DevMind:
+- detects available `lint`, `test`, and `build` scripts across workspace packages
+- executes checks sequentially
+- generates a structured markdown verification report with pass/fail output
+- can auto-run after AI edits when enabled in AI Studio
+
+### 📋 Risk-Aware Planning
+Use DevMind to generate implementation plans before coding:
+- goals and scope
+- files likely to change
+- risk assessment (low/medium/high)
+- step-by-step execution plan
+- verification checklist
+
 ### ✍ Inline Autocomplete
 Real-time AI suggestions as you type. Tab to accept. Context-aware using your actual project's framework and patterns. Works across TypeScript, JavaScript, Python, Go, Rust, Java, and 10+ more languages.
 
@@ -158,6 +173,8 @@ Type `/` in the chat to see all commands:
 | `/test` | Generate unit tests |
 | `/generate [description]` | Generate code from a description |
 | `/scaffold` | Open the scaffolding picker |
+| `/plan` | Create risk-aware implementation plan |
+| `/verify` | Run lint/test/build verification loop |
 | `/tree` | Refresh the file tree |
 | `/index` | Re-index the codebase |
 | `/clear` | Clear chat history |

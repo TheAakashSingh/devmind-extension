@@ -88,7 +88,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     setTimeout(() => {
       this.sendFileTree();
       this.sendUsage();
-      this.post({ type: 'history', messages: this.getHistory() });
+      this.post({ type: 'history', messages: this.getRenderableHistory() });
       this.sendSessions();
       this.sendChatSettings();
     }, 500);
@@ -100,7 +100,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     setTimeout(() => {
       this.sendFileTree();
       this.sendUsage();
-      this.post({ type: 'history', messages: this.getHistory() });
+      this.post({ type: 'history', messages: this.getRenderableHistory() });
       this.sendSessions();
       this.sendChatSettings();
     }, 100);
@@ -180,6 +180,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       test:        'devmind.generateTests',
       tests:       'devmind.generateTests',
       scaffold:    'devmind.scaffold',
+      verify:      'devmind.verifyWorkspace',
+      plan:        'devmind.plan',
       auth:        'devmind.createAuth',
       crud:        'devmind.createCrud',
       api:         'devmind.createApi',
@@ -374,6 +376,22 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     return this.getActiveSession().messages;
   }
 
+  private getRenderableHistory(): ChatMsg[] {
+    const maxMessages = 40;
+    const maxChars = 12000;
+    return this.getHistory().slice(-maxMessages).map((m) => {
+      let content = String(m.content || '');
+      const qIdx = content.indexOf('[QUESTION]\n');
+      if (m.role === 'user' && qIdx >= 0) {
+        content = content.slice(qIdx + 11).trim();
+      }
+      if (content.length > maxChars) {
+        content = content.slice(0, maxChars) + '\n\n...truncated for UI performance...';
+      }
+      return { role: m.role, content };
+    });
+  }
+
   private createSession() {
     const next = this.makeSession('New chat');
     this.sessions.unshift(next);
@@ -388,7 +406,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.activeSessionId = id;
     this.persistSessions();
     this.sendSessions();
-    this.post({ type: 'history', messages: this.getHistory() });
+    this.post({ type: 'history', messages: this.getRenderableHistory() });
   }
 
   private deleteSession(id: string) {
@@ -403,7 +421,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
     this.persistSessions();
     this.sendSessions();
-    this.post({ type: 'history', messages: this.getHistory() });
+    this.post({ type: 'history', messages: this.getRenderableHistory() });
   }
 
   private renameSession(id: string, title: string) {

@@ -1,7 +1,7 @@
 {
   "name": "devmind-ai",
   "displayName": "DevMind AI — Codebase-Aware Coding Assistant",
-  "description": "AI assistant that reads your ENTIRE codebase. @mention any file, accept/reject diffs, scaffold auth/CRUD/API, multi-file refactor. Powered by DeepSeek. Better than Copilot.",
+  "description": "AI coding assistant with full codebase context, multi-chat memory, intent modes, diff-first edits, scaffold/refactor workflows, and verification loops.",
   "version": "2.2.2",
   "publisher": "DevmindAi",
   "license": "MIT",
@@ -14,14 +14,22 @@
   ],
   "keywords": [
     "ai",
+    "ai code assistant",
+    "vscode ai",
     "autocomplete",
     "deepseek",
     "copilot alternative",
+    "augment alternative",
+    "cursor alternative",
     "coding assistant",
     "codebase",
     "refactor",
     "scaffold",
     "code generation",
+    "debug assistant",
+    "unit test generator",
+    "risk analysis",
+    "verification loop",
     "testing",
     "devmind",
     "augment",
@@ -58,6 +66,16 @@
       {
         "command": "devmind.generate",
         "title": "Generate Function",
+        "category": "DevMind"
+      },
+      {
+        "command": "devmind.plan",
+        "title": "Create Risk-Aware Plan",
+        "category": "DevMind"
+      },
+      {
+        "command": "devmind.verifyWorkspace",
+        "title": "Run Verification Loop (lint/test/build)",
         "category": "DevMind"
       },
       {

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as path   from 'path';
 import * as fs     from 'fs';
+import { exec }    from 'child_process';
+import { promisify } from 'util';
 import { InlineCompletionProvider }  from './providers/completionProvider';
 import { SidebarProvider }           from './providers/sidebarProvider';
 import { DeepSeekClient }            from './utils/deepseekClient';
@@ -17,6 +19,7 @@ import {
 let client:  DeepSeekClient;
 let usage:   UsageTracker;
 let sidebar: SidebarProvider;
+const execAsync = promisify(exec);
 
 const DEFAULT_SERVER    = 'https://api-devmind.singhjitech.com';
 const DEFAULT_DASHBOARD = 'https://app-devmind.singhjitech.com';
@@ -102,6 +105,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('devmind.fix',      () => runAction('fix')),
     vscode.commands.registerCommand('devmind.refactor', () => runAction('refactor')),
     vscode.commands.registerCommand('devmind.generate', () => runGenerate()),
+    vscode.commands.registerCommand('devmind.plan',     () => runPlan()),
+    vscode.commands.registerCommand('devmind.verifyWorkspace', () => runVerifyWorkspace()),
 
     vscode.commands.registerCommand('devmind.explainFile', async () => {
       const editor = vscode.window.activeTextEditor;
@@ -129,6 +134,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
           const tests = await client.generateTests(code, file?.language || 'typescript', file?.fileName || 'file', ctx);
           await openResult(tests, file?.language || 'typescript');
+          await autoVerifyIfEnabled();
         } catch (e: any) { showErr(e); }
       });
     }),
@@ -165,6 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
           }));
           const { accepted, rejected } = await diffProvider.proposeMultiEdit(edits, instruction);
           vscode.window.showInformationMessage(`DevMind: Applied ${accepted} file(s), skipped ${rejected}.`);
+          if (accepted > 0) await autoVerifyIfEnabled();
         } catch (e: any) { showErr(e); }
       });
     }),
@@ -237,6 +244,7 @@ export function activate(context: vscode.ExtensionContext) {
           // Re-index after scaffold
           getIndexer()?.rebuild();
           vscode.window.showInformationMessage(`DevMind: Generated ${result.files.length} file(s) for ${name}.`);
+          await autoVerifyIfEnabled();
         } catch (e: any) { showErr(e); }
       });
     }),
@@ -368,6 +376,7 @@ async function runAction(action: 'explain' | 'fix' | 'refactor') {
         // For fix/refactor: show diff and let user accept/reject
         const diffProvider = getDiffProvider();
         await diffProvider.insertWithDiff(result, `${action} code`);
+        await autoVerifyIfEnabled();
       } else {
         await openResult(result, action === 'explain' ? 'markdown' : (file?.language || 'text'));
       }
@@ -394,8 +403,115 @@ async function runGenerate() {
       // Use diff flow so user can review before inserting
       const diffProvider = getDiffProvider();
       await diffProvider.insertWithDiff(code, rawPrompt);
+      await autoVerifyIfEnabled();
     } catch (e: any) { showErr(e); }
   });
+}
+
+async function runPlan() {
+  const proj = collectProjectContext();
+  const file = collectFileContext();
+  const target = await vscode.window.showInputBox({
+    prompt: 'Describe what to implement',
+    placeHolder: 'e.g. migrate auth to refresh tokens and RBAC',
+    ignoreFocusOut: true,
+  });
+  if (!target) return;
+  const planningPrompt = [
+    `Create an implementation plan for this request: ${target}`,
+    `Return markdown with sections:`,
+    `1) Goals`,
+    `2) Files likely to change`,
+    `3) Risk assessment (low/med/high per area)`,
+    `4) Step-by-step execution`,
+    `5) Verification checklist (lint/test/build/manual)`,
+  ].join('\n');
+  const ctx = buildContextPrompt(proj, file);
+  await withProgress('DevMind: Building implementation plan…', async () => {
+    try {
+      const md = await client.action('explain', planningPrompt, file?.language || proj.language || 'text', ctx);
+      await openResult(md, 'markdown');
+    } catch (e: any) { showErr(e); }
+  });
+}
+
+async function runVerifyWorkspace() {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) {
+    vscode.window.showWarningMessage('DevMind: Open a workspace folder first.');
+    return;
+  }
+  const checks = collectVerificationCommands(root);
+  if (!checks.length) {
+    vscode.window.showWarningMessage('DevMind: No lint/test/build scripts found.');
+    return;
+  }
+  const results: Array<{ cwd: string; command: string; ok: boolean; out: string }> = [];
+  await withProgress('DevMind: Running verify loop…', async () => {
+    for (const item of checks) {
+      try {
+        const { stdout, stderr } = await execAsync(item.command, { cwd: item.cwd, timeout: 240_000 });
+        results.push({ cwd: item.cwd, command: item.command, ok: true, out: `${stdout}\n${stderr}`.trim() });
+      } catch (e: any) {
+        const out = `${e?.stdout || ''}\n${e?.stderr || ''}\n${e?.message || ''}`.trim();
+        results.push({ cwd: item.cwd, command: item.command, ok: false, out });
+      }
+    }
+  });
+  const md = buildVerifyReport(results, root);
+  await openResult(md, 'markdown');
+  const failed = results.filter(r => !r.ok).length;
+  if (!failed) vscode.window.showInformationMessage(`DevMind: Verification passed (${results.length} checks).`);
+  else vscode.window.showWarningMessage(`DevMind: Verification found ${failed} failing check(s).`);
+}
+
+function collectVerificationCommands(root: string): Array<{ cwd: string; command: string }> {
+  const candidates = [root, path.join(root, 'server'), path.join(root, 'extension'), path.join(root, 'dashboard')];
+  const checks: Array<{ cwd: string; command: string }> = [];
+  for (const dir of candidates) {
+    const pkg = path.join(dir, 'package.json');
+    if (!fs.existsSync(pkg)) continue;
+    try {
+      const json = JSON.parse(fs.readFileSync(pkg, 'utf8'));
+      const scripts = json?.scripts || {};
+      for (const name of ['lint', 'test', 'build']) {
+        if (scripts[name]) checks.push({ cwd: dir, command: `npm run ${name}` });
+      }
+    } catch {}
+  }
+  return checks;
+}
+
+function buildVerifyReport(
+  rows: Array<{ cwd: string; command: string; ok: boolean; out: string }>,
+  root: string
+): string {
+  const ok = rows.filter(r => r.ok).length;
+  const fail = rows.length - ok;
+  const lines: string[] = [
+    '# DevMind Verification Report',
+    '',
+    `- Workspace: \`${root}\``,
+    `- Checks: **${rows.length}**`,
+    `- Passed: **${ok}**`,
+    `- Failed: **${fail}**`,
+    '',
+  ];
+  for (const r of rows) {
+    lines.push(`## ${r.ok ? 'PASS' : 'FAIL'} — \`${path.basename(r.cwd)}\` · \`${r.command}\``);
+    lines.push('```');
+    lines.push((r.out || '(no output)').slice(0, 4000));
+    lines.push('```');
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+async function autoVerifyIfEnabled() {
+  try {
+    const pref = await client.getPreferences();
+    if (pref?.autoVerify) await runVerifyWorkspace();
+  } catch {}
 }
 
 async function quickScaffold(type: string, defaultName: string) {
