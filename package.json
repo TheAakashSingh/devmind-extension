@@ -2,7 +2,7 @@
   "name": "devmind-ai",
   "displayName": "DevMind AI — Codebase-Aware Coding Assistant",
   "description": "AI assistant that reads your ENTIRE codebase. @mention any file, accept/reject diffs, scaffold auth/CRUD/API, multi-file refactor. Powered by DeepSeek. Better than Copilot.",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "publisher": "DevmindAi",
   "license": "MIT",
   "engines": {
