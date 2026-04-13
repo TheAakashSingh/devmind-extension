@@ -182,12 +182,14 @@ export class DeepSeekClient {
   async chat(
     messages:    Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     language:    string,
-    onToken?:    (t: string) => void
+    onToken?:    (t: string) => void,
+    intent:      'build' | 'debug' | 'refactor' | 'optimize' | 'secure' = 'build',
+    projectMemory = ''
   ): Promise<string> {
     const useStream = Boolean(onToken);
     const res = await this.http.post(
       '/v1/chat',
-      { model: MODELS.chat, messages, language, stream: useStream },
+      { model: MODELS.chat, messages, language, stream: useStream, intent, projectMemory },
       { responseType: useStream ? 'stream' : 'json', timeout: 60_000 }
     );
 
@@ -253,5 +255,16 @@ export class DeepSeekClient {
     } catch {
       return { ok: false };
     }
+  }
+
+  async getPreferences(): Promise<{
+    userId: string;
+    defaultIntent: 'build' | 'debug' | 'refactor' | 'optimize' | 'secure';
+    autoVerify: boolean;
+    projectMemory: string;
+    preferredTemperature: number;
+  }> {
+    const res = await this.http.get('/v1/preferences');
+    return res.data;
   }
 }

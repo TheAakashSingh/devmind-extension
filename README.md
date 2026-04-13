@@ -69,6 +69,18 @@ All scaffold output respects your detected framework and database.
 - **Slash commands** — `/explain`, `/fix`, `/refactor`, `/test`, `/scaffold`, `/generate`
 - **File attachments** — drag or click to attach any file
 - **Context bar** — shows detected framework, database, and auth at a glance
+- **Intent modes** — build, debug, refactor, optimize, secure
+- **Multi-chat sessions** — previous chats list with switch/delete support
+- **Persistent history** — chat state survives tab switches and reloads
+
+### 🧠 AI Studio (Account-Level Controls)
+From dashboard AI Studio, you can configure:
+- Default intent mode (build/debug/refactor/optimize/secure)
+- Project memory (architecture rules, conventions, constraints)
+- Auto-verify preference for reliability workflows
+- Preferred model temperature
+
+These preferences are applied across the product and synced into extension chat behavior.
 
 ### 🔄 Multi-File Refactor
 Rename a service, update an interface, change a pattern — across your entire project. DevMind shows you exactly which files change and what changes before applying anything.
@@ -158,6 +170,12 @@ Type `/` in the chat to see all commands:
 - Requests are processed transiently and discarded
 - DevMind never trains on your repositories
 - Each session is fully isolated
+
+---
+
+## Marketplace Tags (Global SEO)
+
+`ai code assistant`, `vscode ai`, `copilot alternative`, `cursor alternative`, `augment alternative`, `code generation`, `code refactor`, `debug assistant`, `unit test generator`, `autocomplete`, `software architect ai`, `full codebase context`, `project-aware ai`, `multi-file refactor`, `secure coding assistant`, `typescript ai`, `python ai`, `javascript ai`, `dev productivity`, `engineering workflow`.
 
 ---
 

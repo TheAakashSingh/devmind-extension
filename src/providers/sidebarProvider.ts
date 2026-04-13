@@ -29,6 +29,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private streaming = false;
   private readonly sessionsKey = 'devmind.chatSessions.v1';
   private readonly activeSessionKey = 'devmind.activeChatSession.v1';
+  private readonly intentKey = 'devmind.intent.v1';
+  private readonly memoryKey = 'devmind.memory.v1';
+  private intent: 'build' | 'debug' | 'refactor' | 'optimize' | 'secure' = 'build';
+  private projectMemory = '';
 
   constructor(
     private readonly context:      vscode.ExtensionContext,
@@ -38,6 +42,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     private readonly dashboardUrl: string
   ) {
     this.loadSessions();
+    this.intent = this.context.workspaceState.get<typeof this.intent>(this.intentKey, 'build');
+    this.projectMemory = this.context.workspaceState.get<string>(this.memoryKey, '');
   }
 
   resolveWebviewView(view: vscode.WebviewView) {
@@ -70,6 +76,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         case 'deleteSession':   this.deleteSession(String(msg.id || '')); break;
         case 'renameSession':   this.renameSession(String(msg.id || ''), String(msg.title || '')); break;
         case 'getSessions':     this.sendSessions(); break;
+        case 'setIntent':       this.setIntent(String(msg.intent || 'build')); break;
+        case 'setProjectMemory': this.setProjectMemory(String(msg.memory || '')); break;
+        case 'getChatSettings': this.sendChatSettings(); break;
       }
     });
 
@@ -81,7 +90,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       this.sendUsage();
       this.post({ type: 'history', messages: this.getHistory() });
       this.sendSessions();
+      this.sendChatSettings();
     }, 500);
+    void this.syncRemotePreferences();
   }
 
   refresh() {
@@ -91,6 +102,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       this.sendUsage();
       this.post({ type: 'history', messages: this.getHistory() });
       this.sendSessions();
+      this.sendChatSettings();
     }, 100);
   }
 
@@ -282,7 +294,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         file?.language || proj.language || 'typescript',
         (token: string) => {
           if (this.streaming) this.post({ type: 'token', text: token });
-        }
+        },
+        this.intent,
+        this.projectMemory
       );
     } catch (err: any) {
       this.post({ type: 'thinking', show: false });
@@ -426,6 +440,44 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         messageCount: s.messages.length,
       }));
     this.post({ type: 'sessions', sessions, activeId: this.activeSessionId });
+  }
+
+  private setIntent(intent: string) {
+    const allowed = new Set(['build', 'debug', 'refactor', 'optimize', 'secure']);
+    const next = allowed.has(intent) ? intent as typeof this.intent : 'build';
+    this.intent = next;
+    void this.context.workspaceState.update(this.intentKey, this.intent);
+    this.sendChatSettings();
+  }
+
+  private setProjectMemory(memory: string) {
+    this.projectMemory = memory.slice(0, 12000);
+    void this.context.workspaceState.update(this.memoryKey, this.projectMemory);
+  }
+
+  private sendChatSettings() {
+    this.post({
+      type: 'chatSettings',
+      intent: this.intent,
+      hasProjectMemory: Boolean(this.projectMemory.trim()),
+    });
+  }
+
+  private async syncRemotePreferences() {
+    try {
+      const pref = await this.client.getPreferences();
+      if (pref?.defaultIntent) {
+        this.intent = pref.defaultIntent;
+        void this.context.workspaceState.update(this.intentKey, this.intent);
+      }
+      if (typeof pref?.projectMemory === 'string') {
+        this.projectMemory = pref.projectMemory.slice(0, 12000);
+        void this.context.workspaceState.update(this.memoryKey, this.projectMemory);
+      }
+      this.sendChatSettings();
+    } catch {
+      // Keep local settings when server prefs are unavailable.
+    }
   }
 
   private sendUsage() {

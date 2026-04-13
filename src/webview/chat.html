@@ -206,6 +206,7 @@ body{font-family:var(--font);font-size:13px;background:var(--bg0);color:var(--tx
 .hint{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--txt3)}
 .hint-key{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:2px;background:var(--bg3);border:1px solid var(--line2);font-size:9px;font-family:var(--mono);color:var(--txt2)}
 .cfoot-right{font-size:10px;color:var(--txt3)}
+.intent-select{height:22px;background:var(--bg3);border:1px solid var(--line2);color:var(--txt2);border-radius:4px;font-size:10px;padding:0 6px}
 #file-input{display:none}
 </style>
 </head>
@@ -294,6 +295,13 @@ body{font-family:var(--font);font-size:13px;background:var(--bg0);color:var(--tx
       </div>
       <div class="composer-footer">
         <div class="cfoot-left">
+          <select class="intent-select" id="intent-select" title="Intent mode">
+            <option value="build">build</option>
+            <option value="debug">debug</option>
+            <option value="refactor">refactor</option>
+            <option value="optimize">optimize</option>
+            <option value="secure">secure</option>
+          </select>
           <span class="hint"><span class="hint-key">/</span> commands</span>
           <span class="hint"><span class="hint-key">@</span> files</span>
           <span class="hint"><span class="hint-key">⇧↵</span> newline</span>
@@ -325,6 +333,7 @@ var fpList     = document.getElementById('fp-list');
 var fpCount    = document.getElementById('fp-count');
 var sessionsPop = document.getElementById('sessions-pop');
 var sessionsList = document.getElementById('sessions-list');
+var intentSelect = document.getElementById('intent-select');
 
 var sending        = false;
 var currentBotRow  = null;
@@ -784,6 +793,7 @@ document.getElementById('btn-scaffold').addEventListener('click', function(){ vs
 document.getElementById('btn-attach').addEventListener('click',   function(){ fileInput.click(); });
 document.getElementById('btn-files').addEventListener('click',    function(){ toggleFilePanel(); vscode.postMessage({type:'getFileTree'}); });
 document.getElementById('sessions-new').addEventListener('click', function(){ vscode.postMessage({ type:'newSession' }); });
+intentSelect.addEventListener('change', function(){ vscode.postMessage({ type:'setIntent', intent: intentSelect.value }); });
 
 /* ─── VSCODE MESSAGE HANDLER ──────────────────────────────────────────── */
 window.addEventListener('message', function(e){
@@ -840,6 +850,11 @@ window.addEventListener('message', function(e){
     return;
   }
 
+  if (m.type==='chatSettings') {
+    if (m.intent) intentSelect.value = m.intent;
+    return;
+  }
+
   /* ── File search results (for @ mention dropdown) ── */
   if (m.type==='fileSearchResults') {
     if (dropMode==='mention' || !dropMode) showMentionResults(m.results||[]);
@@ -887,6 +902,7 @@ showWelcome();
 vscode.postMessage({type:'getUsage'});
 vscode.postMessage({type:'getFileTree'});
 vscode.postMessage({type:'getSessions'});
+vscode.postMessage({type:'getChatSettings'});
 </script>
 </body>
 </html>
