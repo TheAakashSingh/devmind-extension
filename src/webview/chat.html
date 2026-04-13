@@ -1589,7 +1589,7 @@
        also false (strict equality). Correct form: just use the
        substituted value directly as a boolean expression.
        ═══════════════════════════════════════════════════════════ */
-    var HAS_API_KEY = __HAS_API_KEY__;
+    var HAS_API_KEY = __HAS_API_KEY__ === 'true';
 
     var vscode = (typeof acquireVsCodeApi !== 'undefined')
       ? acquireVsCodeApi()
