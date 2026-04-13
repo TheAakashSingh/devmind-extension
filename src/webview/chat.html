@@ -348,6 +348,9 @@ var dropMode       = '';   // 'slash' | 'mention' | ''
 var sessions       = [];
 var activeSessionId= '';
 
+function on(el, event, fn) { if (el && el.addEventListener) el.addEventListener(event, fn); }
+function has(el) { return !!el; }
+
 /* ─── SLASH COMMANDS ──────────────────────────────────────────────────── */
 var SLASH_CMDS = [
   { cmd:'/explain',     desc:'Explain selected code',         kbd:'Ctrl+Shift+E' },
@@ -722,14 +725,14 @@ function renderAttachments() {
 window.removeAtt     = function(i){ attachments.splice(i,1); renderAttachments(); };
 window.removeMention = function(i){ mentionedFiles.splice(i,1); renderAttachments(); };
 
-fileInput.addEventListener('change', function(){
+on(fileInput, 'change', function(){
   var files=Array.from(fileInput.files);
   Promise.all(files.map(function(f){ return f.text().then(function(c){attachments.push({type:'file',name:f.name,content:c});}).catch(function(){}); })).then(renderAttachments);
   fileInput.value='';
 });
 
 /* ─── INPUT EVENTS ────────────────────────────────────────────────────── */
-inputEl.addEventListener('input', function(){
+on(inputEl, 'input', function(){
   autoResize();
   var val = inputEl.value;
   var cur = inputEl.selectionStart;
@@ -752,7 +755,7 @@ inputEl.addEventListener('input', function(){
   hideDropdowns();
 });
 
-inputEl.addEventListener('keydown', function(e){
+on(inputEl, 'keydown', function(e){
   if (dropMode) {
     if (e.key==='ArrowDown') { e.preventDefault(); navigateDrop(1); return; }
     if (e.key==='ArrowUp')   { e.preventDefault(); navigateDrop(-1); return; }
@@ -765,15 +768,18 @@ inputEl.addEventListener('keydown', function(e){
 });
 
 document.addEventListener('click', function(e){
-  if (!slashDrop.contains(e.target) && !mentionDrop.contains(e.target) && e.target!==inputEl) hideDropdowns();
-  if (!sessionsPop.contains(e.target) && e.target !== document.getElementById('btn-sessions')) {
+  if (has(slashDrop) && has(mentionDrop) && e.target!==inputEl) {
+    if (!slashDrop.contains(e.target) && !mentionDrop.contains(e.target)) hideDropdowns();
+  }
+  var btnSessions = document.getElementById('btn-sessions');
+  if (has(sessionsPop) && e.target !== btnSessions && !sessionsPop.contains(e.target)) {
     sessionsPop.style.display = 'none';
-    document.getElementById('btn-sessions').classList.remove('active');
+    if (btnSessions) btnSessions.classList.remove('active');
   }
 });
 
 /* ─── FILE PANEL SEARCH ───────────────────────────────────────────────── */
-fpSearch.addEventListener('input', function(){
+on(fpSearch, 'input', function(){
   var q = fpSearch.value.trim();
   var filtered = q
     ? allFiles.filter(function(f){ return f.name.toLowerCase().includes(q.toLowerCase()) || f.path.toLowerCase().includes(q.toLowerCase()); })
@@ -782,20 +788,20 @@ fpSearch.addEventListener('input', function(){
 });
 
 /* ─── BUTTON HANDLERS ─────────────────────────────────────────────────── */
-sendBtn.addEventListener('click', sendMessage);
-document.getElementById('btn-new').addEventListener('click',      function(){ vscode.postMessage({type:'newSession'}); });
-document.getElementById('btn-sessions').addEventListener('click', function(){
+on(sendBtn, 'click', sendMessage);
+on(document.getElementById('btn-new'), 'click',      function(){ vscode.postMessage({type:'newSession'}); });
+on(document.getElementById('btn-sessions'), 'click', function(){
   var visible = sessionsPop.style.display === 'block';
   sessionsPop.style.display = visible ? 'none' : 'block';
   this.classList.toggle('active', !visible);
   if (!visible) vscode.postMessage({ type:'getSessions' });
 });
-document.getElementById('btn-settings').addEventListener('click', function(){ vscode.postMessage({type:'openOnboarding'}); });
-document.getElementById('btn-scaffold').addEventListener('click', function(){ vscode.postMessage({type:'scaffold'}); });
-document.getElementById('btn-attach').addEventListener('click',   function(){ fileInput.click(); });
-document.getElementById('btn-files').addEventListener('click',    function(){ toggleFilePanel(); vscode.postMessage({type:'getFileTree'}); });
-document.getElementById('sessions-new').addEventListener('click', function(){ vscode.postMessage({ type:'newSession' }); });
-intentSelect.addEventListener('change', function(){ vscode.postMessage({ type:'setIntent', intent: intentSelect.value }); });
+on(document.getElementById('btn-settings'), 'click', function(){ vscode.postMessage({type:'openOnboarding'}); });
+on(document.getElementById('btn-scaffold'), 'click', function(){ vscode.postMessage({type:'scaffold'}); });
+on(document.getElementById('btn-attach'), 'click',   function(){ if (fileInput) fileInput.click(); });
+on(document.getElementById('btn-files'), 'click',    function(){ toggleFilePanel(); vscode.postMessage({type:'getFileTree'}); });
+on(document.getElementById('sessions-new'), 'click', function(){ vscode.postMessage({ type:'newSession' }); });
+on(intentSelect, 'change', function(){ vscode.postMessage({ type:'setIntent', intent: intentSelect.value }); });
 
 /* ─── VSCODE MESSAGE HANDLER ──────────────────────────────────────────── */
 window.addEventListener('message', function(e){
@@ -900,11 +906,15 @@ window.addEventListener('message', function(e){
 });
 
 /* ─── INIT ────────────────────────────────────────────────────────────── */
-showWelcome();
-vscode.postMessage({type:'getUsage'});
-vscode.postMessage({type:'getFileTree'});
-vscode.postMessage({type:'getSessions'});
-vscode.postMessage({type:'getChatSettings'});
+try {
+  showWelcome();
+  vscode.postMessage({type:'getUsage'});
+  vscode.postMessage({type:'getFileTree'});
+  vscode.postMessage({type:'getSessions'});
+  vscode.postMessage({type:'getChatSettings'});
+} catch (err) {
+  document.body.innerHTML = '<div style="padding:14px;color:#cbd5e1;font-family:sans-serif">DevMind chat failed to initialize. Reload window and reopen chat.</div>';
+}
 </script>
 </body>
 </html>
