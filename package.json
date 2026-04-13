@@ -131,6 +131,11 @@
         "category": "DevMind"
       },
       {
+        "command": "devmind.checkConnection",
+        "title": "Check Connection & Login",
+        "category": "DevMind"
+      },
+      {
         "command": "devmind.openOnboarding",
         "title": "Sign In / Account",
         "category": "DevMind"

@@ -88,10 +88,14 @@ export class CodebaseIndexer {
         const pathLower = f.path.toLowerCase();
         const nameLower = f.name.toLowerCase();
         let score = 0;
+        const normalizedQ = q.replace(/^@/, '');
         if (nameLower === q)                            score += 100;
         if (nameLower.startsWith(q))                   score += 50;
         if (nameLower.includes(q))                     score += 30;
         if (pathLower.includes(q))                     score += 10;
+        if (pathLower.startsWith(normalizedQ))         score += 80;
+        if (pathLower.startsWith(`${normalizedQ}/`))   score += 85;
+        if (pathLower.includes(`/${normalizedQ}/`))    score += 45;
         // Boost source files
         if (f.path.startsWith('src/'))                 score += 5;
         if (f.language === 'typescript')               score += 2;

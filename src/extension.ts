@@ -29,7 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   client  = new DeepSeekClient(serverUrl, apiKey);
   usage   = new UsageTracker(context);
-  sidebar = new SidebarProvider(context.extensionUri, client, usage, dashboardUrl);
+  sidebar = new SidebarProvider(context, context.extensionUri, client, usage, dashboardUrl);
 
   // ── Init codebase indexer ──────────────────────────────────────────────────
   const indexer = initIndexer(context);
@@ -90,7 +90,9 @@ export function activate(context: vscode.ExtensionContext) {
       { pattern: '**' },
       new InlineCompletionProvider(client, usage)
     ),
-    vscode.window.registerWebviewViewProvider('devmind.chatView', sidebar)
+    vscode.window.registerWebviewViewProvider('devmind.chatView', sidebar, {
+      webviewOptions: { retainContextWhenHidden: true },
+    })
   );
 
   // ── Commands ───────────────────────────────────────────────────────────────
@@ -267,6 +269,21 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand('devmind.chat',          () => vscode.commands.executeCommand('devmind.chatView.focus')),
     vscode.commands.registerCommand('devmind.openDashboard', () => vscode.env.openExternal(vscode.Uri.parse(dashboardUrl))),
+    vscode.commands.registerCommand('devmind.checkConnection', async () => {
+      await withProgress('DevMind: Checking server and login…', async () => {
+        const health = await client.health();
+        const valid = await client.validate();
+        if (!health.ok) {
+          vscode.window.showErrorMessage('DevMind: Server is unreachable. Check `devmind.serverUrl` and internet.');
+          return;
+        }
+        if (!valid.valid) {
+          vscode.window.showWarningMessage('DevMind: Server is up, but API key is invalid/expired. Run DevMind: Set API Key.');
+          return;
+        }
+        vscode.window.showInformationMessage(`DevMind: Connected. Plan ${String(valid.plan || 'free').toUpperCase()}, ${valid.remaining ?? 0} requests left.`);
+      });
+    }),
 
     vscode.commands.registerCommand('devmind.openOnboarding', () => {
       const panel = vscode.window.createWebviewPanel(
@@ -326,6 +343,11 @@ export function activate(context: vscode.ExtensionContext) {
     setTimeout(() => vscode.commands.executeCommand('devmind.openOnboarding'), 1200);
   } else {
     void syncPlan();
+    void client.validate().then((v) => {
+      if (!v.valid) {
+        vscode.window.showWarningMessage('DevMind: Stored API key looks invalid. Run DevMind: Set API Key.');
+      }
+    }).catch(() => {});
   }
 }
 

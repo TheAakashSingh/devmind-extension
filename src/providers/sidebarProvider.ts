@@ -15,18 +15,30 @@ import {
 
 interface Attachment { type: 'file'; name: string; content: string; language?: string; }
 interface ChatMsg    { role: 'user' | 'assistant'; content: string; }
+interface ChatSession {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messages: ChatMsg[];
+}
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
-  private view?:     vscode.WebviewView;
-  private history:   ChatMsg[] = [];
+  private view?: vscode.WebviewView;
+  private sessions: ChatSession[] = [];
+  private activeSessionId = '';
   private streaming = false;
+  private readonly sessionsKey = 'devmind.chatSessions.v1';
+  private readonly activeSessionKey = 'devmind.activeChatSession.v1';
 
   constructor(
+    private readonly context:      vscode.ExtensionContext,
     private readonly extensionUri: vscode.Uri,
     private readonly client:       DeepSeekClient,
     private readonly usage:        UsageTracker,
     private readonly dashboardUrl: string
-  ) {}
+  ) {
+    this.loadSessions();
+  }
 
   resolveWebviewView(view: vscode.WebviewView) {
     this.view = view;
@@ -53,19 +65,33 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         case 'stopGeneration':  this.streaming = false; break;
         case 'scaffold':        vscode.commands.executeCommand('devmind.scaffold'); break;
         case 'openFile':        this.openFileInEditor(msg.path); break;
+        case 'newSession':      this.createSession(); break;
+        case 'switchSession':   this.switchSession(String(msg.id || '')); break;
+        case 'deleteSession':   this.deleteSession(String(msg.id || '')); break;
+        case 'renameSession':   this.renameSession(String(msg.id || ''), String(msg.title || '')); break;
+        case 'getSessions':     this.sendSessions(); break;
       }
     });
 
     this.usage.onChange(() => this.sendUsage());
 
     // Send file tree after a short delay so the webview is ready
-    setTimeout(() => { this.sendFileTree(); this.sendUsage(); }, 500);
+    setTimeout(() => {
+      this.sendFileTree();
+      this.sendUsage();
+      this.post({ type: 'history', messages: this.getHistory() });
+      this.sendSessions();
+    }, 500);
   }
 
   refresh() {
     if (!this.view) return;
-    this.view.webview.html = this.buildHtml(this.view.webview);
-    setTimeout(() => { this.sendFileTree(); this.sendUsage(); }, 300);
+    setTimeout(() => {
+      this.sendFileTree();
+      this.sendUsage();
+      this.post({ type: 'history', messages: this.getHistory() });
+      this.sendSessions();
+    }, 100);
   }
 
   // ── File tree ──────────────────────────────────────────────────────────────
@@ -214,28 +240,45 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       .map(a => `\n\n[Attached: ${a.name}]\n\`\`\`${a.language || ''}\n${a.content}\n\`\`\``)
       .join('');
 
-    const ctxPrompt = buildContextPrompt(proj, file, resolvedMentions);
     const optimized = optimizePrompt(text, proj);
     const fullText  = optimized + attContext;
 
     // Add codebase structure to first message if workspace is indexed
     let systemExtra = '';
-    if (this.history.length === 0 && indexer && indexer.getFiles().length > 0) {
+    const history = this.getHistory();
+    if (history.length === 0 && indexer && indexer.getFiles().length > 0) {
       systemExtra = '\n\n' + buildCodebaseSummary(indexer.getFiles().slice(0, 200), indexer.getRootPath());
     }
 
-    if (this.history.length === 0) {
-      this.history.push({ role: 'user', content: `[CONTEXT]\n${ctxPrompt}${systemExtra}\n\n[QUESTION]\n${fullText}` });
-    } else {
-      this.history.push({ role: 'user', content: fullText });
+    // Auto-retrieve top relevant files when user did not explicitly @mention files.
+    if (!resolvedMentions.length && indexer) {
+      const autoFiles = indexer.searchFiles(text, 4);
+      for (const f of autoFiles) {
+        const rf = indexer.readFile(f.path);
+        if (rf?.content) {
+          resolvedMentions.push({
+            name: f.path,
+            content: rf.content.slice(0, 5000),
+          });
+        }
+      }
     }
+    const ctxPrompt = buildContextPrompt(proj, file, resolvedMentions);
+
+    if (history.length === 0) {
+      history.push({ role: 'user', content: `[CONTEXT]\n${ctxPrompt}${systemExtra}\n\n[QUESTION]\n${fullText}` });
+    } else {
+      history.push({ role: 'user', content: fullText });
+    }
+    this.persistSessions();
+    this.updateSessionMetadataFromPrompt(text);
 
     this.post({ type: 'thinking', show: true });
 
     let reply = '';
     try {
       reply = await this.client.chat(
-        this.history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+        history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
         file?.language || proj.language || 'typescript',
         (token: string) => {
           if (this.streaming) this.post({ type: 'token', text: token });
@@ -243,24 +286,146 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       );
     } catch (err: any) {
       this.post({ type: 'thinking', show: false });
-      this.post({ type: 'error', text: err.message || 'Request failed. Check connection and API key.' });
-      this.history.pop();
+      const msg = String(err?.message || 'Request failed. Check connection and API key.');
+      this.post({ type: 'error', text: msg });
+      if (msg.toLowerCase().includes('api key is invalid') || msg.toLowerCase().includes('authentication failed')) {
+        this.post({ type: 'warning', text: 'Use DevMind: Set API Key to reconnect your account.' });
+      }
+      history.pop();
+      this.persistSessions();
       this.streaming = false;
       return;
     }
 
     this.streaming = false;
-    this.history.push({ role: 'assistant', content: reply });
+    history.push({ role: 'assistant', content: reply });
+    this.persistSessions();
+    this.touchActiveSession();
     this.post({ type: 'done', text: reply });
+    this.sendSessions();
     this.usage.record();
     this.sendUsage();
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   private clearChat() {
-    this.history   = [];
+    const active = this.getActiveSession();
+    active.messages = [];
+    active.updatedAt = Date.now();
     this.streaming = false;
+    this.persistSessions();
+    this.sendSessions();
     this.post({ type: 'cleared' });
+  }
+
+  private loadSessions() {
+    const saved = this.context.workspaceState.get<ChatSession[]>(this.sessionsKey, []);
+    const active = this.context.workspaceState.get<string>(this.activeSessionKey, '');
+    this.sessions = Array.isArray(saved) ? saved : [];
+    if (!this.sessions.length) {
+      const first = this.makeSession('New chat');
+      this.sessions = [first];
+      this.activeSessionId = first.id;
+      this.persistSessions();
+      return;
+    }
+    this.activeSessionId = this.sessions.some(s => s.id === active) ? active : this.sessions[0].id;
+  }
+
+  private persistSessions() {
+    void this.context.workspaceState.update(this.sessionsKey, this.sessions);
+    void this.context.workspaceState.update(this.activeSessionKey, this.activeSessionId);
+  }
+
+  private makeSession(title: string): ChatSession {
+    return {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      updatedAt: Date.now(),
+      messages: [],
+    };
+  }
+
+  private getActiveSession(): ChatSession {
+    const existing = this.sessions.find(s => s.id === this.activeSessionId);
+    if (existing) return existing;
+    const created = this.makeSession('New chat');
+    this.sessions.unshift(created);
+    this.activeSessionId = created.id;
+    this.persistSessions();
+    return created;
+  }
+
+  private getHistory(): ChatMsg[] {
+    return this.getActiveSession().messages;
+  }
+
+  private createSession() {
+    const next = this.makeSession('New chat');
+    this.sessions.unshift(next);
+    this.activeSessionId = next.id;
+    this.persistSessions();
+    this.sendSessions();
+    this.post({ type: 'cleared' });
+  }
+
+  private switchSession(id: string) {
+    if (!id || !this.sessions.some(s => s.id === id)) return;
+    this.activeSessionId = id;
+    this.persistSessions();
+    this.sendSessions();
+    this.post({ type: 'history', messages: this.getHistory() });
+  }
+
+  private deleteSession(id: string) {
+    if (!id) return;
+    if (this.sessions.length === 1) {
+      this.clearChat();
+      return;
+    }
+    this.sessions = this.sessions.filter(s => s.id !== id);
+    if (!this.sessions.some(s => s.id === this.activeSessionId)) {
+      this.activeSessionId = this.sessions[0].id;
+    }
+    this.persistSessions();
+    this.sendSessions();
+    this.post({ type: 'history', messages: this.getHistory() });
+  }
+
+  private renameSession(id: string, title: string) {
+    const clean = title.trim().slice(0, 40);
+    if (!clean) return;
+    const s = this.sessions.find(x => x.id === id);
+    if (!s) return;
+    s.title = clean;
+    s.updatedAt = Date.now();
+    this.persistSessions();
+    this.sendSessions();
+  }
+
+  private touchActiveSession() {
+    const s = this.getActiveSession();
+    s.updatedAt = Date.now();
+  }
+
+  private updateSessionMetadataFromPrompt(text: string) {
+    const s = this.getActiveSession();
+    if (s.title === 'New chat') {
+      s.title = text.trim().replace(/\s+/g, ' ').slice(0, 34) || 'New chat';
+    }
+    s.updatedAt = Date.now();
+  }
+
+  private sendSessions() {
+    const sessions = [...this.sessions]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(s => ({
+        id: s.id,
+        title: s.title,
+        updatedAt: s.updatedAt,
+        messageCount: s.messages.length,
+      }));
+    this.post({ type: 'sessions', sessions, activeId: this.activeSessionId });
   }
 
   private sendUsage() {

@@ -12,6 +12,16 @@ const MODELS = {
   explain:      'deepseek-chat',    // natural language
 };
 
+class DevMindHttpError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'AUTH' | 'QUOTA' | 'NETWORK' | 'SERVER' | 'UNKNOWN',
+    public readonly status?: number
+  ) {
+    super(message);
+  }
+}
+
 export class DeepSeekClient {
   private http: AxiosInstance;
 
@@ -21,6 +31,26 @@ export class DeepSeekClient {
       timeout: 180_000,  // 3 min for large requests
       headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
     });
+    this.http.interceptors.response.use(
+      (res) => res,
+      (err) => {
+        const status = err?.response?.status;
+        const msg = err?.response?.data?.error || err?.message || 'Request failed';
+        if (!status) {
+          throw new DevMindHttpError('Cannot reach DevMind server. Check internet or server URL.', 'NETWORK');
+        }
+        if (status === 401) {
+          throw new DevMindHttpError('Authentication failed. Your API key is invalid or expired. Please set a valid key.', 'AUTH', status);
+        }
+        if (status === 429) {
+          throw new DevMindHttpError(msg || 'Daily quota exceeded. Upgrade your plan.', 'QUOTA', status);
+        }
+        if (status >= 500) {
+          throw new DevMindHttpError(msg || 'DevMind server error. Please retry shortly.', 'SERVER', status);
+        }
+        throw new DevMindHttpError(msg, 'UNKNOWN', status);
+      }
+    );
   }
 
   setKey(key: string) {
@@ -213,6 +243,15 @@ export class DeepSeekClient {
       return res.data;
     } catch {
       return { valid: false, plan: 'free', remaining: 0 };
+    }
+  }
+
+  async health(): Promise<{ ok: boolean; status?: string; env?: string }> {
+    try {
+      const res = await this.http.get('/health');
+      return { ok: true, status: res.data?.status, env: res.data?.env };
+    } catch {
+      return { ok: false };
     }
   }
 }

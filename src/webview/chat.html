@@ -29,6 +29,15 @@ body{font-family:var(--font);font-size:13px;background:var(--bg0);color:var(--tx
 .icon-btn:hover{background:var(--bg3);color:var(--txt2)}
 .icon-btn svg{width:13px;height:13px}
 .icon-btn.active{color:var(--blue);background:rgba(79,142,247,.12)}
+.sessions-pop{position:absolute;top:42px;right:10px;width:260px;max-height:340px;overflow-y:auto;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.35);z-index:220;display:none}
+.sessions-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:10px;text-transform:uppercase;color:var(--txt3);font-weight:700}
+.sessions-new{border:none;background:rgba(79,142,247,.14);color:var(--blue);padding:3px 7px;border-radius:4px;font-size:10px;cursor:pointer}
+.session-item{padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+.session-item:hover,.session-item.active{background:var(--bg3)}
+.session-title{font-size:11px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-meta{margin-top:2px;font-size:9px;color:var(--txt3);display:flex;justify-content:space-between;align-items:center}
+.session-actions button{border:none;background:none;color:var(--txt3);font-size:10px;cursor:pointer}
+.session-actions button:hover{color:var(--red)}
 
 /* ─── CONTEXT BAR ────────────────────────────────────────────────────── */
 .ctx-bar{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0;overflow-x:auto;min-height:30px}
@@ -211,6 +220,9 @@ body{font-family:var(--font);font-size:13px;background:var(--bg0);color:var(--tx
     <span class="brand-name">DevMind</span>
   </div>
   <div class="topbar-right">
+    <button class="icon-btn" id="btn-sessions" title="Previous chats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
     <button class="icon-btn" id="btn-files" title="Toggle file browser">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v13h18V7M3 7l4-4h10l4 4M3 7h18"/></svg>
     </button>
@@ -224,6 +236,13 @@ body{font-family:var(--font);font-size:13px;background:var(--bg0);color:var(--tx
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
     </button>
   </div>
+</div>
+<div class="sessions-pop" id="sessions-pop">
+  <div class="sessions-head">
+    <span>Chats</span>
+    <button class="sessions-new" id="sessions-new">+ New</button>
+  </div>
+  <div id="sessions-list"></div>
 </div>
 
 <!-- CONTEXT BAR -->
@@ -304,6 +323,8 @@ var filePanel  = document.getElementById('file-panel');
 var fpSearch   = document.getElementById('fp-search');
 var fpList     = document.getElementById('fp-list');
 var fpCount    = document.getElementById('fp-count');
+var sessionsPop = document.getElementById('sessions-pop');
+var sessionsList = document.getElementById('sessions-list');
 
 var sending        = false;
 var currentBotRow  = null;
@@ -315,6 +336,8 @@ var mentionIdx     = -1;
 var mentionStartPos= -1;   // cursor offset where @ was typed
 var allFiles       = [];   // full codebase index
 var dropMode       = '';   // 'slash' | 'mention' | ''
+var sessions       = [];
+var activeSessionId= '';
 
 /* ─── SLASH COMMANDS ──────────────────────────────────────────────────── */
 var SLASH_CMDS = [
@@ -379,11 +402,12 @@ function showMentionResults(results) {
 
 function selectMention(filePath, fileName) {
   var val = inputEl.value;
+  var mentionToken = filePath || fileName;
   var atIdx = val.lastIndexOf('@', inputEl.selectionStart - 1);
   if (atIdx < 0) atIdx = val.lastIndexOf('@');
   if (atIdx >= 0) {
-    inputEl.value = val.slice(0, atIdx) + '@' + fileName + ' ' + val.slice(inputEl.selectionStart);
-    var newPos = atIdx + fileName.length + 2;
+    inputEl.value = val.slice(0, atIdx) + '@' + mentionToken + ' ' + val.slice(inputEl.selectionStart);
+    var newPos = atIdx + mentionToken.length + 2;
     inputEl.setSelectionRange(newPos, newPos);
   }
   // Track mentioned file
@@ -425,6 +449,35 @@ function confirmDrop(key) {
 
 function hideDropdowns() {
   slashDrop.style.display='none'; mentionDrop.style.display='none'; dropMode=''; slashIdx=-1; mentionIdx=-1;
+}
+
+function renderSessionsPanel() {
+  if (!sessions.length) {
+    sessionsList.innerHTML = '<div class="session-item"><div class="session-title">No chats yet</div></div>';
+    return;
+  }
+  sessionsList.innerHTML = sessions.map(function(s){
+    var d = new Date(s.updatedAt || Date.now());
+    var tm = d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    return '<div class="session-item '+(s.id===activeSessionId?'active':'')+'" data-id="'+esc(s.id)+'">'
+      +'<div class="session-title">'+esc(s.title || 'New chat')+'</div>'
+      +'<div class="session-meta"><span>'+(s.messageCount||0)+' msgs · '+tm+'</span>'
+      +'<span class="session-actions"><button data-del="'+esc(s.id)+'">Delete</button></span></div>'
+      +'</div>';
+  }).join('');
+  sessionsList.querySelectorAll('.session-item').forEach(function(el){
+    el.addEventListener('click', function(e){
+      var del = e.target && e.target.getAttribute && e.target.getAttribute('data-del');
+      if (del) {
+        e.stopPropagation();
+        vscode.postMessage({ type:'deleteSession', id: del });
+        return;
+      }
+      vscode.postMessage({ type:'switchSession', id: el.dataset.id });
+      sessionsPop.style.display='none';
+      document.getElementById('btn-sessions').classList.remove('active');
+    });
+  });
 }
 
 /* ─── FILE PANEL ─────────────────────────────────────────────────────── */
@@ -553,6 +606,30 @@ function makeBotRow() {
     +'<div class="bot-bubble"><div class="md"></div></div></div></div>';
   return row;
 }
+function renderHistory(messages) {
+  msgsEl.innerHTML = '';
+  rawBuffer = '';
+  currentBotRow = null;
+  if (!messages || !messages.length) {
+    showWelcome();
+    return;
+  }
+  messages.forEach(function(m){
+    if (!m || !m.role || !m.content) return;
+    if (m.role === 'user') {
+      var text = m.content;
+      var qIdx = text.indexOf('[QUESTION]\n');
+      if (qIdx >= 0) text = text.slice(qIdx + 11).trim();
+      addUserMsg(text);
+      return;
+    }
+    var row = makeBotRow();
+    msgsEl.appendChild(row);
+    var md = row.querySelector('.md');
+    if (md) md.innerHTML = renderMd(m.content);
+  });
+  scroll();
+}
 function showThinking() {
   removeThinking();
   var row=document.createElement('div'); row.className='msg-row bot'; row.id='thinking';
@@ -678,6 +755,10 @@ inputEl.addEventListener('keydown', function(e){
 
 document.addEventListener('click', function(e){
   if (!slashDrop.contains(e.target) && !mentionDrop.contains(e.target) && e.target!==inputEl) hideDropdowns();
+  if (!sessionsPop.contains(e.target) && e.target !== document.getElementById('btn-sessions')) {
+    sessionsPop.style.display = 'none';
+    document.getElementById('btn-sessions').classList.remove('active');
+  }
 });
 
 /* ─── FILE PANEL SEARCH ───────────────────────────────────────────────── */
@@ -691,11 +772,18 @@ fpSearch.addEventListener('input', function(){
 
 /* ─── BUTTON HANDLERS ─────────────────────────────────────────────────── */
 sendBtn.addEventListener('click', sendMessage);
-document.getElementById('btn-new').addEventListener('click',      function(){ vscode.postMessage({type:'clear'}); });
+document.getElementById('btn-new').addEventListener('click',      function(){ vscode.postMessage({type:'newSession'}); });
+document.getElementById('btn-sessions').addEventListener('click', function(){
+  var visible = sessionsPop.style.display === 'block';
+  sessionsPop.style.display = visible ? 'none' : 'block';
+  this.classList.toggle('active', !visible);
+  if (!visible) vscode.postMessage({ type:'getSessions' });
+});
 document.getElementById('btn-settings').addEventListener('click', function(){ vscode.postMessage({type:'openOnboarding'}); });
 document.getElementById('btn-scaffold').addEventListener('click', function(){ vscode.postMessage({type:'scaffold'}); });
 document.getElementById('btn-attach').addEventListener('click',   function(){ fileInput.click(); });
 document.getElementById('btn-files').addEventListener('click',    function(){ toggleFilePanel(); vscode.postMessage({type:'getFileTree'}); });
+document.getElementById('sessions-new').addEventListener('click', function(){ vscode.postMessage({ type:'newSession' }); });
 
 /* ─── VSCODE MESSAGE HANDLER ──────────────────────────────────────────── */
 window.addEventListener('message', function(e){
@@ -739,6 +827,18 @@ window.addEventListener('message', function(e){
   if (m.type==='info') { addInfoMsg(m.text||''); return; }
 
   if (m.type==='cleared') { showWelcome(); return; }
+
+  if (m.type==='history') {
+    renderHistory(m.messages || []);
+    return;
+  }
+
+  if (m.type==='sessions') {
+    sessions = m.sessions || [];
+    activeSessionId = m.activeId || '';
+    renderSessionsPanel();
+    return;
+  }
 
   /* ── File search results (for @ mention dropdown) ── */
   if (m.type==='fileSearchResults') {
@@ -786,6 +886,7 @@ window.addEventListener('message', function(e){
 showWelcome();
 vscode.postMessage({type:'getUsage'});
 vscode.postMessage({type:'getFileTree'});
+vscode.postMessage({type:'getSessions'});
 </script>
 </body>
 </html>
