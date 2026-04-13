@@ -1571,15 +1571,34 @@
     accept=".ts,.js,.tsx,.jsx,.json,.md,.css,.html,.py,.go,.rs,.java,.txt,.yaml,.yml,.sh" multiple />
 
   <script>
+    function hardFail(message) {
+      try {
+        document.body.innerHTML = '<div style="font-family:Segoe UI,sans-serif;padding:14px;color:#e2e8f0;background:#0d1117;line-height:1.6">'
+          + '<h3 style="margin:0 0 8px 0">DevMind webview error</h3>'
+          + '<p style="margin:0 0 8px 0">The chat UI crashed during startup.</p>'
+          + '<pre style="white-space:pre-wrap;background:#171a21;border:1px solid rgba(255,255,255,.1);padding:8px;border-radius:6px;">'
+          + String(message || 'Unknown error').replace(/[<>&]/g, '')
+          + '</pre>'
+          + '<p style="margin:8px 0 0 0">Reload VS Code window and reopen DevMind chat.</p>'
+          + '</div>';
+      } catch {}
+    }
+    window.addEventListener('error', function (e) { hardFail(e && e.message ? e.message : 'Script error'); });
+    window.addEventListener('unhandledrejection', function (e) { hardFail(e && e.reason ? e.reason : 'Unhandled promise rejection'); });
+    console.log('[DevMind] Starting webview...');
+    
     /* ═══════════════════════════════════════════════════════════
        FIX #1 — Font loaded via <link> not @import (CSP safe)
        ═══════════════════════════════════════════════════════════ */
+    try {
     (function () {
       var l = document.createElement('link');
       l.rel = 'stylesheet';
       l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap';
       document.head.appendChild(l);
+      console.log('[DevMind] Font link added');
     })();
+    } catch(e) { console.error('[DevMind] Font error:', e); }
 
     /* ═══════════════════════════════════════════════════════════
        FIX #2 — Correct boolean after template substitution

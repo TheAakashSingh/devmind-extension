@@ -1,5 +1,3 @@
-import axios, { AxiosInstance } from 'axios';
-
 // ── Model routing — right model for right task ────────────────────────────────
 const MODELS = {
   autocomplete: 'deepseek-chat',    // fast, cheap
@@ -23,46 +21,77 @@ class DevMindHttpError extends Error {
 }
 
 export class DeepSeekClient {
-  private http: AxiosInstance;
-
   constructor(private serverUrl: string, private apiKey: string) {
-    this.http = axios.create({
-      baseURL: serverUrl,
-      timeout: 180_000,  // 3 min for large requests
-      headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
-    });
-    this.http.interceptors.response.use(
-      (res) => res,
-      (err) => {
-        const status = err?.response?.status;
-        const msg = err?.response?.data?.error || err?.message || 'Request failed';
-        if (!status) {
-          throw new DevMindHttpError('Cannot reach DevMind server. Check internet or server URL.', 'NETWORK');
-        }
-        if (status === 401) {
-          throw new DevMindHttpError('Authentication failed. Your API key is invalid or expired. Please set a valid key.', 'AUTH', status);
-        }
-        if (status === 429) {
-          throw new DevMindHttpError(msg || 'Daily quota exceeded. Upgrade your plan.', 'QUOTA', status);
-        }
-        if (status >= 500) {
-          throw new DevMindHttpError(msg || 'DevMind server error. Please retry shortly.', 'SERVER', status);
-        }
-        throw new DevMindHttpError(msg, 'UNKNOWN', status);
-      }
-    );
   }
 
   setKey(key: string) {
     this.apiKey = key;
-    this.http.defaults.headers['x-api-key'] = key;
   }
 
   updateConfig(serverUrl: string, apiKey: string) {
     this.serverUrl = serverUrl;
     this.apiKey    = apiKey;
-    this.http.defaults.baseURL              = serverUrl;
-    this.http.defaults.headers['x-api-key'] = apiKey;
+  }
+
+  private buildUrl(route: string): string {
+    return `${this.serverUrl.replace(/\/$/, '')}${route}`;
+  }
+
+  private async parseError(res: Response): Promise<never> {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const data = await res.json() as any;
+      msg = data?.error || msg;
+    } catch {}
+    if (res.status === 401) {
+      throw new DevMindHttpError('Authentication failed. Your API key is invalid or expired. Please set a valid key.', 'AUTH', res.status);
+    }
+    if (res.status === 429) {
+      throw new DevMindHttpError(msg || 'Daily quota exceeded. Upgrade your plan.', 'QUOTA', res.status);
+    }
+    if (res.status >= 500) {
+      throw new DevMindHttpError(msg || 'DevMind server error. Please retry shortly.', 'SERVER', res.status);
+    }
+    throw new DevMindHttpError(msg, 'UNKNOWN', res.status);
+  }
+
+  private async postJson<T>(route: string, body: unknown, timeoutMs = 180_000): Promise<T> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(this.buildUrl(route), {
+        method: 'POST',
+        headers: { 'x-api-key': this.apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) await this.parseError(res);
+      return await res.json() as T;
+    } catch (err: any) {
+      if (err instanceof DevMindHttpError) throw err;
+      throw new DevMindHttpError('Cannot reach DevMind server. Check internet or server URL.', 'NETWORK');
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async getJson<T>(route: string, timeoutMs = 60_000): Promise<T> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(this.buildUrl(route), {
+        method: 'GET',
+        headers: { 'x-api-key': this.apiKey },
+        signal: ctrl.signal,
+      });
+      if (!res.ok) await this.parseError(res);
+      return await res.json() as T;
+    } catch (err: any) {
+      if (err instanceof DevMindHttpError) throw err;
+      throw new DevMindHttpError('Cannot reach DevMind server. Check internet or server URL.', 'NETWORK');
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   // ── Inline autocomplete ────────────────────────────────────────────────────
@@ -73,7 +102,7 @@ export class DeepSeekClient {
     fileName:    string;
     projectCtx?: string;
   }): Promise<string> {
-    const res = await this.http.post('/v1/complete', {
+    const res = await this.postJson<any>('/v1/complete', {
       model:      MODELS.autocomplete,
       prefix:     params.prefix,
       suffix:     params.suffix,
@@ -81,7 +110,7 @@ export class DeepSeekClient {
       fileName:   params.fileName,
       projectCtx: params.projectCtx,
     });
-    return (res.data.completion ?? '').trim();
+    return (res.completion ?? '').trim();
   }
 
   // ── Code actions (explain / fix / refactor) ────────────────────────────────
@@ -91,14 +120,14 @@ export class DeepSeekClient {
     language:   string,
     contextPrompt?: string
   ): Promise<string> {
-    const res = await this.http.post('/v1/action', {
+    const res = await this.postJson<any>('/v1/action', {
       model:    MODELS[type] || MODELS.explain,
       type,
       code,
       language,
       contextPrompt,
     });
-    return (res.data.result ?? '').trim();
+    return (res.result ?? '').trim();
   }
 
   // ── Explain entire file ────────────────────────────────────────────────────
@@ -108,14 +137,14 @@ export class DeepSeekClient {
     language:  string,
     projectCtx?: string
   ): Promise<string> {
-    const res = await this.http.post('/v1/explain-file', {
+    const res = await this.postJson<any>('/v1/explain-file', {
       model:      MODELS.explain,
       content,
       fileName,
       language,
       projectCtx,
     });
-    return (res.data.result ?? '').trim();
+    return (res.result ?? '').trim();
   }
 
   // ── Generate from prompt ───────────────────────────────────────────────────
@@ -124,13 +153,13 @@ export class DeepSeekClient {
     language:   string,
     projectCtx?: string
   ): Promise<string> {
-    const res = await this.http.post('/v1/generate', {
+    const res = await this.postJson<any>('/v1/generate', {
       model:      MODELS.generate,
       prompt,
       language,
       projectCtx,
     });
-    return (res.data.code ?? '').trim();
+    return (res.code ?? '').trim();
   }
 
   // ── Generate tests ────────────────────────────────────────────────────────
@@ -140,14 +169,14 @@ export class DeepSeekClient {
     fileName:   string,
     projectCtx?: string
   ): Promise<string> {
-    const res = await this.http.post('/v1/generate-tests', {
+    const res = await this.postJson<any>('/v1/generate-tests', {
       model:      MODELS.tests,
       code,
       language,
       fileName,
       projectCtx,
     });
-    return (res.data.tests ?? '').trim();
+    return (res.tests ?? '').trim();
   }
 
   // ── Scaffold (one-command generators) ────────────────────────────────────
@@ -157,11 +186,11 @@ export class DeepSeekClient {
     language:   string;
     projectCtx: string;
   }): Promise<{ files: Array<{ path: string; content: string }> }> {
-    const res = await this.http.post('/v1/scaffold', {
+    const res = await this.postJson<{ files: Array<{ path: string; content: string }> }>('/v1/scaffold', {
       model:      MODELS.scaffold,
       ...params,
-    }, { timeout: 120_000 });  // 2 min timeout
-    return res.data;
+    }, 120_000);  // 2 min timeout
+    return res;
   }
 
   // ── Multi-file refactor ───────────────────────────────────────────────────
@@ -171,11 +200,11 @@ export class DeepSeekClient {
     language:    string;
     projectCtx:  string;
   }): Promise<{ files: Array<{ path: string; content: string; summary: string }> }> {
-    const res = await this.http.post('/v1/multi-refactor', {
+    const res = await this.postJson<{ files: Array<{ path: string; content: string; summary: string }> }>('/v1/multi-refactor', {
       model: MODELS.refactor,
       ...params,
     });
-    return res.data;
+    return res;
   }
 
   // ── Chat — streaming or JSON ───────────────────────────────────────────────
@@ -187,62 +216,67 @@ export class DeepSeekClient {
     projectMemory = ''
   ): Promise<string> {
     const useStream = Boolean(onToken);
-    const res = await this.http.post(
-      '/v1/chat',
-      { model: MODELS.chat, messages, language, stream: useStream, intent, projectMemory },
-      { responseType: useStream ? 'stream' : 'json', timeout: 60_000 }
-    );
-
-    if (!useStream) { return (res.data.reply ?? '').trim(); }
+    if (!useStream) {
+      const res = await this.postJson<any>('/v1/chat', { model: MODELS.chat, messages, language, stream: false, intent, projectMemory }, 60_000);
+      return (res.reply ?? '').trim();
+    }
 
     return new Promise<string>((resolve, reject) => {
       let full    = '';
       let partial = '';
-
-      res.data.on('data', (chunk: Buffer) => {
-        const raw = partial + chunk.toString();
-        partial   = '';
-        const lines = raw.split('\n');
-        const last  = lines.pop() ?? '';
-        if (last) { partial = last; }
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === ': ping' || trimmed === 'data: [DONE]') { continue; }
-          if (trimmed.startsWith('data: ')) {
-            try {
-              const json  = JSON.parse(trimmed.slice(6));
-              const token = json.choices?.[0]?.delta?.content ?? '';
-              if (token && onToken) { full += token; onToken(token); }
-            } catch {}
+      fetch(this.buildUrl('/v1/chat'), {
+        method: 'POST',
+        headers: { 'x-api-key': this.apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MODELS.chat, messages, language, stream: true, intent, projectMemory }),
+      }).then(async (res) => {
+        if (!res.ok) await this.parseError(res);
+        if (!res.body) throw new Error('Empty response stream');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const raw = partial + decoder.decode(value, { stream: true });
+          partial = '';
+          const lines = raw.split('\n');
+          const last = lines.pop() ?? '';
+          if (last) partial = last;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed === ': ping' || trimmed === 'data: [DONE]') continue;
+            if (trimmed.startsWith('data: ')) {
+              try {
+                const json = JSON.parse(trimmed.slice(6));
+                const token = json.choices?.[0]?.delta?.content ?? '';
+                if (token && onToken) { full += token; onToken(token); }
+              } catch {}
+            }
           }
         }
-      });
-      res.data.on('end',   () => resolve(full));
-      res.data.on('error', (err: Error) => reject(err));
+        resolve(full);
+      }).catch((err) => reject(err));
     });
   }
 
   // ── File utilities ─────────────────────────────────────────────────────────
   async readFile(filePath: string): Promise<string> {
-    const res = await this.http.post('/v1/files/read', { path: filePath });
-    return res.data.content ?? '';
+    const res = await this.postJson<any>('/v1/files/read', { path: filePath });
+    return res.content ?? '';
   }
 
   async writeFile(filePath: string, content: string): Promise<{ success: boolean; message: string }> {
-    const res = await this.http.post('/v1/files/write', { path: filePath, content });
-    return res.data;
+    return await this.postJson<{ success: boolean; message: string }>('/v1/files/write', { path: filePath, content });
   }
 
   async searchFiles(query: string): Promise<Array<{ path: string; preview: string }>> {
-    const res = await this.http.post('/v1/files/search', { query });
-    return res.data.results ?? [];
+    const res = await this.postJson<any>('/v1/files/search', { query });
+    return res.results ?? [];
   }
 
   // ── Validate API key ───────────────────────────────────────────────────────
   async validate(): Promise<{ valid: boolean; plan: string; remaining: number }> {
     try {
-      const res = await this.http.get('/v1/auth/validate');
-      return res.data;
+      return await this.getJson<{ valid: boolean; plan: string; remaining: number }>('/v1/auth/validate');
     } catch {
       return { valid: false, plan: 'free', remaining: 0 };
     }
@@ -250,8 +284,8 @@ export class DeepSeekClient {
 
   async health(): Promise<{ ok: boolean; status?: string; env?: string }> {
     try {
-      const res = await this.http.get('/health');
-      return { ok: true, status: res.data?.status, env: res.data?.env };
+      const res = await this.getJson<any>('/health');
+      return { ok: true, status: res?.status, env: res?.env };
     } catch {
       return { ok: false };
     }
@@ -264,7 +298,12 @@ export class DeepSeekClient {
     projectMemory: string;
     preferredTemperature: number;
   }> {
-    const res = await this.http.get('/v1/preferences');
-    return res.data;
+    return await this.getJson<{
+      userId: string;
+      defaultIntent: 'build' | 'debug' | 'refactor' | 'optimize' | 'secure';
+      autoVerify: boolean;
+      projectMemory: string;
+      preferredTemperature: number;
+    }>('/v1/preferences');
   }
 }

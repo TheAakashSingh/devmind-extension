@@ -25,6 +25,7 @@ const DEFAULT_SERVER    = 'https://api-devmind.singhjitech.com';
 const DEFAULT_DASHBOARD = 'https://app-devmind.singhjitech.com';
 
 export function activate(context: vscode.ExtensionContext) {
+  console.log('[DevMind] Extension activating...');
   const cfg          = vscode.workspace.getConfiguration('devmind');
   const apiKey       = cfg.get<string>('apiKey', '');
   const serverUrl    = cfg.get<string>('serverUrl', DEFAULT_SERVER);
@@ -349,6 +350,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  console.log('[DevMind] Activation complete, checking API key...');
   if (!apiKey) {
     setTimeout(() => vscode.commands.executeCommand('devmind.openOnboarding'), 1200);
   } else {

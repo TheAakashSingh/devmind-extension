@@ -24,6 +24,8 @@ interface ChatSession {
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
+  private bootstrapTimer?: NodeJS.Timeout;
+  private resolving = false;
   private sessions: ChatSession[] = [];
   private activeSessionId = '';
   private streaming = false;
@@ -47,52 +49,73 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   resolveWebviewView(view: vscode.WebviewView) {
-    this.view = view;
-    view.webview.options = {
-      enableScripts:      true,
-      localResourceRoots: [this.extensionUri],
-    };
-    view.webview.html = this.buildHtml(view.webview);
+    if (this.resolving) return;
+    this.resolving = true;
+    try {
+      console.log('[DevMind] Sidebar resolveWebviewView called');
+      this.view = view;
+      view.webview.options = {
+        enableScripts:      true,
+        localResourceRoots: [this.extensionUri],
+      };
+      view.webview.html = this.buildHtml(view.webview);
 
-    view.webview.onDidReceiveMessage(async (msg) => {
-      switch (msg.type) {
-        case 'chat':            await this.handleChat(msg.text, msg.attachments || [], msg.mentionedFiles || []); break;
-        case 'slash':           await this.handleSlash(msg.command, msg.args || ''); break;
-        case 'clear':           this.clearChat(); break;
-        case 'insertCode':      await this.insertCodeWithDiff(msg.code, msg.description || 'Insert code'); break;
-        case 'applyToFile':     await this.applyToFileWithDiff(msg.filePath, msg.content, msg.description); break;
-        case 'getUsage':        this.sendUsage(); break;
-        case 'getFileTree':     this.sendFileTree(); break;
-        case 'searchFiles':     this.sendFileSearch(msg.query || ''); break;
-        case 'readFile':        this.sendFileContent(msg.path); break;
-        case 'openOnboarding':  vscode.commands.executeCommand('devmind.openOnboarding'); break;
-        case 'openDashboard':   vscode.env.openExternal(vscode.Uri.parse(this.dashboardUrl)); break;
-        case 'setKey':          vscode.commands.executeCommand('devmind.setKey'); break;
-        case 'stopGeneration':  this.streaming = false; break;
-        case 'scaffold':        vscode.commands.executeCommand('devmind.scaffold'); break;
-        case 'openFile':        this.openFileInEditor(msg.path); break;
-        case 'newSession':      this.createSession(); break;
-        case 'switchSession':   this.switchSession(String(msg.id || '')); break;
-        case 'deleteSession':   this.deleteSession(String(msg.id || '')); break;
-        case 'renameSession':   this.renameSession(String(msg.id || ''), String(msg.title || '')); break;
-        case 'getSessions':     this.sendSessions(); break;
-        case 'setIntent':       this.setIntent(String(msg.intent || 'build')); break;
-        case 'setProjectMemory': this.setProjectMemory(String(msg.memory || '')); break;
-        case 'getChatSettings': this.sendChatSettings(); break;
-      }
-    });
+      view.onDidDispose(() => {
+        if (this.bootstrapTimer) clearTimeout(this.bootstrapTimer);
+        this.view = undefined;
+      });
 
-    this.usage.onChange(() => this.sendUsage());
+      view.webview.onDidReceiveMessage(async (msg) => {
+        switch (msg.type) {
+          case 'chat':            await this.handleChat(msg.text, msg.attachments || [], msg.mentionedFiles || []); break;
+          case 'slash':           await this.handleSlash(msg.command, msg.args || ''); break;
+          case 'clear':           this.clearChat(); break;
+          case 'insertCode':      await this.insertCodeWithDiff(msg.code, msg.description || 'Insert code'); break;
+          case 'applyToFile':     await this.applyToFileWithDiff(msg.filePath, msg.content, msg.description); break;
+          case 'getUsage':        this.sendUsage(); break;
+          case 'getFileTree':     this.sendFileTree(); break;
+          case 'searchFiles':     this.sendFileSearch(msg.query || ''); break;
+          case 'readFile':        this.sendFileContent(msg.path); break;
+          case 'openOnboarding':  vscode.commands.executeCommand('devmind.openOnboarding'); break;
+          case 'openDashboard':   vscode.env.openExternal(vscode.Uri.parse(this.dashboardUrl)); break;
+          case 'setKey':          vscode.commands.executeCommand('devmind.setKey'); break;
+          case 'stopGeneration':  this.streaming = false; break;
+          case 'scaffold':        vscode.commands.executeCommand('devmind.scaffold'); break;
+          case 'openFile':        this.openFileInEditor(msg.path); break;
+          case 'newSession':      this.createSession(); break;
+          case 'switchSession':   this.switchSession(String(msg.id || '')); break;
+          case 'deleteSession':   this.deleteSession(String(msg.id || '')); break;
+          case 'renameSession':   this.renameSession(String(msg.id || ''), String(msg.title || '')); break;
+          case 'getSessions':     this.sendSessions(); break;
+          case 'setIntent':       this.setIntent(String(msg.intent || 'build')); break;
+          case 'setProjectMemory': this.setProjectMemory(String(msg.memory || '')); break;
+          case 'getChatSettings': this.sendChatSettings(); break;
+          case 'ready':           this.refresh(); break;
+        }
+      });
 
-    // Send file tree after a short delay so the webview is ready
-    setTimeout(() => {
-      this.sendFileTree();
-      this.sendUsage();
-      this.post({ type: 'history', messages: this.getRenderableHistory() });
-      this.sendSessions();
-      this.sendChatSettings();
-    }, 500);
-    void this.syncRemotePreferences();
+      this.usage.onChange(() => this.sendUsage());
+
+      // Send bootstrap data after a short delay so the webview is ready.
+      this.bootstrapTimer = setTimeout(() => {
+        this.sendFileTree();
+        this.sendUsage();
+        this.post({ type: 'history', messages: this.getRenderableHistory() });
+        this.sendSessions();
+        this.sendChatSettings();
+      }, 500);
+      void this.syncRemotePreferences();
+    } catch (err: any) {
+      const message = String(err?.message || 'Unknown webview bootstrap error');
+      console.error('[DevMind] Failed to resolve webview:', err);
+      view.webview.html = `<html><body style="font-family:sans-serif;padding:16px;color:#e2e8f0;background:#0d1117">
+        <h3>DevMind failed to open</h3>
+        <p>${message.replace(/</g, '&lt;')}</p>
+        <p>Try: <code>Developer: Reload Window</code> and reopen chat.</p>
+      </body></html>`;
+    } finally {
+      this.resolving = false;
+    }
   }
 
   refresh() {
