@@ -95,6 +95,11 @@
         "category": "DevMind"
       },
       {
+        "command": "devmind.implementPlan",
+        "title": "Implement Plan (Hybrid Executor)",
+        "category": "DevMind"
+      },
+      {
         "command": "devmind.generateTests",
         "title": "Generate Tests",
         "category": "DevMind"

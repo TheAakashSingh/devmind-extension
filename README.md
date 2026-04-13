@@ -99,6 +99,13 @@ DevMind can run a full **fix -> verify -> retry** cycle:
 - if checks fail, feed failures back for a second fix pass
 - show final verification report
 
+### 🤖 Hybrid Implement-Plan Executor
+Use `/implement-plan` to run a multi-step implementation workflow:
+- creates a task graph from your request
+- applies low-risk patches automatically
+- routes medium/high-risk patches through diff approval
+- runs verify + retry cycle before finishing
+
 ### 📦 PR-Ready Workflow
 Generate a ready-to-edit PR draft with:
 - branch status overview
@@ -191,6 +198,7 @@ Type `/` in the chat to see all commands:
 | `/verify` | Run lint/test/build verification loop |
 | `/autoheal` | Run autonomous fix+verify+retry cycle |
 | `/pr` | Generate PR-ready summary + test checklist |
+| `/implement-plan` | Execute hybrid multi-file implementation flow |
 | `/tree` | Refresh the file tree |
 | `/index` | Re-index the codebase |
 | `/clear` | Clear chat history |

@@ -12,6 +12,7 @@ import {
   optimizePrompt,
   buildCodebaseSummary,
 } from '../utils/contextCollector';
+import { improveAssistantReply } from '../utils/qualityGuards';
 
 interface Attachment { type: 'file'; name: string; content: string; language?: string; }
 interface ChatMsg    { role: 'user' | 'assistant'; content: string; }
@@ -207,6 +208,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       plan:        'devmind.plan',
       autoheal:    'devmind.autoHeal',
       pr:          'devmind.prSummary',
+      'implement-plan': 'devmind.implementPlan',
       auth:        'devmind.createAuth',
       crud:        'devmind.createCrud',
       api:         'devmind.createApi',
@@ -291,13 +293,25 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     // Auto-retrieve top relevant files when user did not explicitly @mention files.
     if (!resolvedMentions.length && indexer) {
-      const autoFiles = indexer.searchRelevantFiles(text, 4);
-      for (const f of autoFiles) {
-        const rf = indexer.readFile(f.path);
-        if (rf?.content) {
+      const localCandidates = indexer.searchRelevantFiles(text, 20)
+        .map((f) => {
+          const rf = indexer.readFile(f.path);
+          return rf?.content ? { path: f.path, content: rf.content.slice(0, 2200) } : null;
+        })
+        .filter(Boolean) as Array<{ path: string; content: string }>;
+      try {
+        const ranked = await this.client.retrieveRelevant(text, localCandidates);
+        for (const r of ranked.slice(0, 4)) {
+          const rf = indexer.readFile(r.path);
+          if (rf?.content) {
+            resolvedMentions.push({ name: r.path, content: rf.content.slice(0, 5000) });
+          }
+        }
+      } catch {
+        for (const c of localCandidates.slice(0, 4)) {
           resolvedMentions.push({
-            name: f.path,
-            content: rf.content.slice(0, 5000),
+            name: c.path,
+            content: c.content.slice(0, 5000),
           });
         }
       }
@@ -339,10 +353,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     this.streaming = false;
-    history.push({ role: 'assistant', content: reply });
+    const polishedReply = improveAssistantReply(reply);
+    history.push({ role: 'assistant', content: polishedReply });
     this.persistSessions();
     this.touchActiveSession();
-    this.post({ type: 'done', text: reply });
+    this.post({ type: 'done', text: polishedReply });
     this.sendSessions();
     this.usage.record();
     this.sendUsage();

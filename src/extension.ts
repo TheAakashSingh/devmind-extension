@@ -9,6 +9,9 @@ import { DeepSeekClient }            from './utils/deepseekClient';
 import { UsageTracker }              from './utils/usageTracker';
 import { initIndexer, getIndexer }   from './utils/codebaseIndexer';
 import { getDiffProvider }           from './providers/diffProvider';
+import { evaluateRisk, toRiskMarkdown } from './utils/riskEngine';
+import { runHybridImplementPlan } from './utils/planExecutor';
+import { codeQualityIssues } from './utils/qualityGuards';
 import {
   collectProjectContext,
   collectFileContext,
@@ -110,6 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('devmind.verifyWorkspace', () => runVerifyWorkspace()),
     vscode.commands.registerCommand('devmind.autoHeal', () => runAutoHeal()),
     vscode.commands.registerCommand('devmind.prSummary', () => runPrSummary()),
+    vscode.commands.registerCommand('devmind.implementPlan', () => runImplementPlan()),
 
     vscode.commands.registerCommand('devmind.explainFile', async () => {
       const editor = vscode.window.activeTextEditor;
@@ -377,9 +381,13 @@ async function runAction(action: 'explain' | 'fix' | 'refactor') {
     try {
       const result = await client.action(action, code, file?.language || 'text', ctx);
       if (action === 'fix' || action === 'refactor') {
+        const qualityIssues = codeQualityIssues(result, file?.language || 'text');
+        if (qualityIssues.length >= 3) {
+          vscode.window.showWarningMessage(`DevMind: quality guard flagged output (${qualityIssues.join(', ')}). Review carefully.`);
+        }
         // For fix/refactor: show diff and let user accept/reject
         const diffProvider = getDiffProvider();
-        const risk = buildRiskReport(code, result, action);
+        const risk = toRiskMarkdown(action, evaluateRisk(code, result));
         await openResult(risk, 'markdown');
         await diffProvider.insertWithDiff(result, `${action} code`);
         await autoVerifyIfEnabled();
@@ -406,10 +414,14 @@ async function runGenerate() {
   await withProgress('DevMind: Generating…', async () => {
     try {
       const code = await client.generate(optimized, lang, ctx);
+      const qualityIssues = codeQualityIssues(code, lang);
+      if (qualityIssues.length >= 3) {
+        vscode.window.showWarningMessage(`DevMind: generated code quality warning (${qualityIssues.join(', ')}).`);
+      }
       // Use diff flow so user can review before inserting
       const diffProvider = getDiffProvider();
       const baseline = editor?.document.getText() || '';
-      const risk = buildRiskReport(baseline, code, 'generate');
+      const risk = toRiskMarkdown('generate', evaluateRisk(baseline, code));
       await openResult(risk, 'markdown');
       await diffProvider.insertWithDiff(code, rawPrompt);
       await autoVerifyIfEnabled();
@@ -527,6 +539,12 @@ async function runPrSummary() {
         execAsync('git log -8 --oneline', { cwd: root, timeout: 60_000 }),
         execAsync('git diff -- .', { cwd: root, timeout: 60_000 }),
       ]);
+      const verify = await runVerifyWorkspaceInternal();
+      const statusLines = (status.stdout || '(clean)').trim().split('\n').filter(Boolean);
+      const grouped = [
+        `- feature: ${statusLines.filter((l) => l.includes('A ') || l.includes('M ')).length} file(s)`,
+        `- cleanup: ${statusLines.filter((l) => l.includes('D ')).length} file(s)`,
+      ].join('\n');
       const summary = [
         '# PR Summary Draft',
         '',
@@ -534,10 +552,13 @@ async function runPrSummary() {
         '- Describe why this change is needed',
         '- Mention impacted modules and behavior',
         '',
-        '## Git status',
+        '## Branch status',
         '```',
         (status.stdout || '(clean)').trim().slice(0, 2000),
         '```',
+        '',
+        '## Commit suggestions (grouped)',
+        grouped,
         '',
         '## Recent commits',
         '```',
@@ -549,9 +570,13 @@ async function runPrSummary() {
         (diff.stdout || '').trim().slice(0, 6000),
         '```',
         '',
+        '## Verification evidence',
+        '```',
+        verify.report.slice(0, 4000),
+        '```',
+        '',
         '## Test plan checklist',
-        '- [ ] Build passes',
-        '- [ ] Lint passes',
+        `- [${verify.failed === 0 ? 'x' : ' '}] Build/lint/test checks`,
         '- [ ] Core workflow manually tested',
         '- [ ] Regression checks completed',
       ].join('\n');
@@ -562,31 +587,30 @@ async function runPrSummary() {
   });
 }
 
-function buildRiskReport(before: string, after: string, action: string): string {
-  const b = before || '';
-  const a = after || '';
-  const beforeLines = b.split('\n').length;
-  const afterLines = a.split('\n').length;
-  const delta = Math.abs(afterLines - beforeLines);
-  let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
-  if (delta > 80) risk = 'HIGH';
-  else if (delta > 30) risk = 'MEDIUM';
-  const breakingHints = /(rename|remove|delete|public|interface|api|schema|migration)/i.test(a);
-  const blastRadius = delta > 80 ? 'wide' : delta > 30 ? 'medium' : 'focused';
-  const confidence = risk === 'LOW' ? 0.86 : risk === 'MEDIUM' ? 0.68 : 0.49;
-  return [
-    '# Change Risk Report',
-    '',
-    `- Action: **${action}**`,
-    `- Estimated confidence: **${Math.round(confidence * 100)}%**`,
-    `- Risk level: **${risk}**`,
-    `- Blast radius: **${blastRadius}**`,
-    `- Breaking-change flags: **${breakingHints ? 'possible' : 'none detected'}**`,
-    '',
-    '## Notes',
-    '- Review diff before apply.',
-    '- Run verification loop after applying.',
-  ].join('\n');
+async function runImplementPlan() {
+  const proj = collectProjectContext();
+  const file = collectFileContext();
+  const target = await vscode.window.showInputBox({
+    prompt: 'Implement full plan for request',
+    placeHolder: 'e.g. add audit logging with admin filters and dashboard view',
+    ignoreFocusOut: true,
+  });
+  if (!target) return;
+  const ctx = buildContextPrompt(proj, file);
+  await withProgress('DevMind: Implementing plan (hybrid mode)…', async () => {
+    try {
+      await runHybridImplementPlan({
+        client,
+        target,
+        language: file?.language || proj.language || 'typescript',
+        contextPrompt: ctx,
+        verify: runVerifyWorkspaceInternal,
+        openResult,
+      });
+    } catch (e: any) {
+      showErr(e);
+    }
+  });
 }
 
 async function runVerifyWorkspaceInternal(): Promise<{ failed: number; report: string }> {

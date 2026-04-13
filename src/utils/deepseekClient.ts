@@ -306,4 +306,13 @@ export class DeepSeekClient {
       preferredTemperature: number;
     }>('/v1/preferences');
   }
+
+  async retrieveRelevant(query: string, candidates: Array<{ path: string; content: string }>): Promise<Array<{ path: string; score: number; reason: string }>> {
+    const res = await this.postJson<{ results: Array<{ path: string; score: number; reason: string }> }>(
+      '/v1/retrieve',
+      { query, candidates },
+      90_000
+    );
+    return res.results || [];
+  }
 }
