@@ -2,7 +2,7 @@
   "name": "devmind-ai",
   "displayName": "DevMind AI — Codebase-Aware Coding Assistant",
   "description": "AI coding assistant with full codebase context, multi-chat memory, intent modes, diff-first edits, scaffold/refactor workflows, and verification loops.",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "publisher": "DevmindAi",
   "license": "MIT",
   "engines": {
