@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
-import * as path   from 'path';
-import * as fs     from 'fs';
-import { exec }    from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
+import { exec } from 'child_process';
 import { promisify } from 'util';
-import { InlineCompletionProvider }  from './providers/completionProvider';
-import { SidebarProvider }           from './providers/sidebarProvider';
-import { DeepSeekClient }            from './utils/deepseekClient';
-import { UsageTracker }              from './utils/usageTracker';
-import { initIndexer, getIndexer }   from './utils/codebaseIndexer';
-import { getDiffProvider }           from './providers/diffProvider';
+import { InlineCompletionProvider } from './providers/completionProvider';
+import { SidebarProvider } from './providers/sidebarProvider';
+import { DeepSeekClient } from './utils/deepseekClient';
+import { UsageTracker } from './utils/usageTracker';
+import { initIndexer, getIndexer } from './utils/codebaseIndexer';
+import { getDiffProvider } from './providers/diffProvider';
 import { evaluateRisk, toRiskMarkdown } from './utils/riskEngine';
 import { runHybridImplementPlan } from './utils/planExecutor';
 import { codeQualityIssues } from './utils/qualityGuards';
@@ -19,32 +19,144 @@ import {
   optimizePrompt,
 } from './utils/contextCollector';
 
-let client:  DeepSeekClient;
-let usage:   UsageTracker;
+let client: DeepSeekClient;
+let usage: UsageTracker;
 let sidebar: SidebarProvider;
 const execAsync = promisify(exec);
 
-const DEFAULT_SERVER    = 'https://api-devmind.singhjitech.com';
+const DEFAULT_SERVER = 'https://api-devmind.singhjitech.com';
 const DEFAULT_DASHBOARD = 'https://app-devmind.singhjitech.com';
+
+// ── Enhanced Constants ──────────────────────────────────────────────────────
+const EXTENDED_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+const FILE_WRITE_RETRY_ATTEMPTS = 3;
+const FILE_WRITE_RETRY_DELAY = 500; // milliseconds
+
+// ── File Creation Utilities ────────────────────────────────────────────────────
+
+/**
+ * Creates a directory recursively with retry logic
+ */
+async function ensureDirectoryExists(dirPath: string): Promise<boolean> {
+  for (let attempt = 0; attempt < FILE_WRITE_RETRY_ATTEMPTS; attempt++) {
+    try {
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+      return true;
+    } catch (e: any) {
+      if (attempt === FILE_WRITE_RETRY_ATTEMPTS - 1) {
+        console.error(`[DevMind] Failed to create directory after ${FILE_WRITE_RETRY_ATTEMPTS} attempts:`, e);
+        throw new Error(`Cannot create directory: ${dirPath} (${e.message})`);
+      }
+      await delay(FILE_WRITE_RETRY_DELAY * (attempt + 1));
+    }
+  }
+  return false;
+}
+
+/**
+ * Writes file content with retry logic and proper error handling
+ */
+async function writeFileWithRetry(filePath: string, content: string): Promise<boolean> {
+  const dirPath = path.dirname(filePath);
+  await ensureDirectoryExists(dirPath);
+
+  for (let attempt = 0; attempt < FILE_WRITE_RETRY_ATTEMPTS; attempt++) {
+    try {
+      // Use atomic write: write to temp file first, then rename
+      const tempPath = `${filePath}.tmp`;
+      fs.writeFileSync(tempPath, content, 'utf8');
+      
+      // Verify write was successful
+      const written = fs.readFileSync(tempPath, 'utf8');
+      if (written !== content) {
+        throw new Error('Content verification failed');
+      }
+      
+      // Atomic rename
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      fs.renameSync(tempPath, filePath);
+      
+      console.log(`[DevMind] Successfully wrote: ${filePath}`);
+      return true;
+    } catch (e: any) {
+      if (attempt === FILE_WRITE_RETRY_ATTEMPTS - 1) {
+        console.error(`[DevMind] Failed to write file after ${FILE_WRITE_RETRY_ATTEMPTS} attempts:`, e);
+        throw new Error(`Cannot write file: ${path.basename(filePath)} (${e.message})`);
+      }
+      await delay(FILE_WRITE_RETRY_DELAY * (attempt + 1));
+    }
+  }
+  return false;
+}
+
+/**
+ * Batch write multiple files with progress tracking
+ */
+async function writeMultipleFiles(
+  files: Array<{ path: string; content: string }>,
+  wsRoot: string,
+  onProgress?: (current: number, total: number, filePath: string) => void
+): Promise<Array<{ path: string; success: boolean; error?: string }>> {
+  const results: Array<{ path: string; success: boolean; error?: string }> = [];
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const fullPath = path.join(wsRoot, file.path);
+    
+    onProgress?.(i + 1, files.length, file.path);
+
+    try {
+      await writeFileWithRetry(fullPath, file.content);
+      results.push({ path: file.path, success: true });
+    } catch (e: any) {
+      results.push({ path: file.path, success: false, error: e.message });
+      console.error(`[DevMind] Error writing ${file.path}:`, e);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Simple delay utility
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Opens file in editor after creation
+ */
+async function openFileInEditor(filePath: string): Promise<void> {
+  try {
+    const uri = vscode.Uri.file(filePath);
+    const doc = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(doc, { preview: false });
+  } catch (e: any) {
+    console.warn(`[DevMind] Could not open file in editor:`, e);
+  }
+}
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('[DevMind] Extension activating...');
-  const cfg          = vscode.workspace.getConfiguration('devmind');
-  const apiKey       = cfg.get<string>('apiKey', '');
-  const serverUrl    = cfg.get<string>('serverUrl', DEFAULT_SERVER);
+  const cfg = vscode.workspace.getConfiguration('devmind');
+  const apiKey = cfg.get<string>('apiKey', '');
+  const serverUrl = cfg.get<string>('serverUrl', DEFAULT_SERVER);
   const dashboardUrl = cfg.get<string>('dashboardUrl', DEFAULT_DASHBOARD);
 
-  client  = new DeepSeekClient(serverUrl, apiKey);
-  usage   = new UsageTracker(context);
+  client = new DeepSeekClient(serverUrl, apiKey);
+  usage = new UsageTracker(context);
   sidebar = new SidebarProvider(context, context.extensionUri, client, usage, dashboardUrl);
 
   // ── Init codebase indexer ──────────────────────────────────────────────────
   const indexer = initIndexer(context);
   context.subscriptions.push({ dispose: () => indexer.dispose() });
-  // Start indexing in background (non-blocking)
   indexer.start().catch(() => {});
 
-  // Re-index when workspace folders change
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => indexer.rebuild())
   );
@@ -56,19 +168,19 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(bar);
 
   function refreshBar() {
-    const key    = vscode.workspace.getConfiguration('devmind').get<string>('apiKey', '');
+    const key = vscode.workspace.getConfiguration('devmind').get<string>('apiKey', '');
     const inline = vscode.workspace.getConfiguration('devmind').get<boolean>('enableInline', true);
     if (!key) {
-      bar.text    = '$(sparkle) DevMind';
+      bar.text = '$(sparkle) DevMind';
       bar.tooltip = 'DevMind AI — click to connect';
       return;
     }
-    const rem   = usage.getRemaining();
-    const plan  = usage.getPlan().toUpperCase();
+    const rem = usage.getRemaining();
+    const plan = usage.getPlan().toUpperCase();
     const files = getIndexer()?.getFiles().length || 0;
-    bar.text    = `$(sparkle) DevMind ${rem}`;
+    bar.text = `$(sparkle) DevMind ${rem}`;
     bar.tooltip = [
-      `DevMind AI v2.2`,
+      `DevMind AI v2.3 (Enhanced)`,
       `Requests left: ${rem}`,
       `Plan: ${plan}`,
       `Inline: ${inline ? 'ON' : 'OFF'}`,
@@ -79,11 +191,15 @@ export function activate(context: vscode.ExtensionContext) {
 
   async function syncPlan() {
     const key = vscode.workspace.getConfiguration('devmind').get<string>('apiKey', '');
-    if (!key) { usage.setPlan('free'); refreshBar(); return; }
+    if (!key) {
+      usage.setPlan('free');
+      refreshBar();
+      return;
+    }
     try {
       const v = await client.validate();
       if (v.valid && v.plan) usage.setPlan(v.plan);
-    } catch {}
+    } catch { }
     refreshBar();
     sidebar.refresh();
   }
@@ -104,12 +220,11 @@ export function activate(context: vscode.ExtensionContext) {
 
   // ── Commands ───────────────────────────────────────────────────────────────
   context.subscriptions.push(
-
-    vscode.commands.registerCommand('devmind.explain',  () => runAction('explain')),
-    vscode.commands.registerCommand('devmind.fix',      () => runAction('fix')),
+    vscode.commands.registerCommand('devmind.explain', () => runAction('explain')),
+    vscode.commands.registerCommand('devmind.fix', () => runAction('fix')),
     vscode.commands.registerCommand('devmind.refactor', () => runAction('refactor')),
     vscode.commands.registerCommand('devmind.generate', () => runGenerate()),
-    vscode.commands.registerCommand('devmind.plan',     () => runPlan()),
+    vscode.commands.registerCommand('devmind.plan', () => runPlan()),
     vscode.commands.registerCommand('devmind.verifyWorkspace', () => runVerifyWorkspace()),
     vscode.commands.registerCommand('devmind.autoHeal', () => runAutoHeal()),
     vscode.commands.registerCommand('devmind.prSummary', () => runPrSummary()),
@@ -118,14 +233,16 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('devmind.explainFile', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
-      const doc  = editor.document;
+      const doc = editor.document;
       const proj = collectProjectContext();
-      const ctx  = buildContextPrompt(proj, null);
+      const ctx = buildContextPrompt(proj, null);
       await withProgress('DevMind: Analysing file…', async () => {
         try {
           const result = await client.explainFile(doc.getText(), path.basename(doc.fileName), doc.languageId, ctx);
           await openResult(result, 'markdown');
-        } catch (e: any) { showErr(e); }
+        } catch (e: any) {
+          showErr(e);
+        }
       });
     }),
 
@@ -133,35 +250,43 @@ export function activate(context: vscode.ExtensionContext) {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       const code = editor.document.getText(editor.selection);
-      if (!code.trim()) { vscode.window.showWarningMessage('DevMind: Select code to test first.'); return; }
+      if (!code.trim()) {
+        vscode.window.showWarningMessage('DevMind: Select code to test first.');
+        return;
+      }
       const proj = collectProjectContext();
       const file = collectFileContext();
-      const ctx  = buildContextPrompt(proj, file);
+      const ctx = buildContextPrompt(proj, file);
       await withProgress('DevMind: Writing tests…', async () => {
         try {
           const tests = await client.generateTests(code, file?.language || 'typescript', file?.fileName || 'file', ctx);
           await openResult(tests, file?.language || 'typescript');
           await autoVerifyIfEnabled();
-        } catch (e: any) { showErr(e); }
+        } catch (e: any) {
+          showErr(e);
+        }
       });
     }),
 
     vscode.commands.registerCommand('devmind.multiRefactor', async () => {
       const instruction = await vscode.window.showInputBox({
-        prompt:         'Refactor instruction across files',
-        placeHolder:    'e.g. rename OrderService to TransactionService everywhere',
+        prompt: 'Refactor instruction across files',
+        placeHolder: 'e.g. rename OrderService to TransactionService everywhere',
         ignoreFocusOut: true,
       });
       if (!instruction) return;
 
-      const proj  = collectProjectContext();
-      const ctx   = buildContextPrompt(proj, null);
-      const opt   = optimizePrompt(instruction, proj);
-      const docs  = vscode.workspace.textDocuments
+      const proj = collectProjectContext();
+      const ctx = buildContextPrompt(proj, null);
+      const opt = optimizePrompt(instruction, proj);
+      const docs = vscode.workspace.textDocuments
         .filter(d => !d.isUntitled && !d.uri.path.includes('node_modules'))
         .slice(0, 10);
 
-      if (!docs.length) { vscode.window.showWarningMessage('DevMind: Open files to refactor first.'); return; }
+      if (!docs.length) {
+        vscode.window.showWarningMessage('DevMind: Open files to refactor first.');
+        return;
+      }
 
       const files = docs.map(d => ({ path: d.fileName, content: d.getText() }));
       await withProgress('DevMind: Refactoring…', async () => {
@@ -169,98 +294,121 @@ export function activate(context: vscode.ExtensionContext) {
           const result = await client.multiRefactor({ instruction: opt, files, language: proj.language, projectCtx: ctx });
           const diffProvider = getDiffProvider();
           const edits = result.files.map(f => ({
-            id:          f.path,
-            filePath:    vscode.workspace.asRelativePath(f.path),
-            fileName:    path.basename(f.path),
-            oldContent:  files.find(x => x.path === f.path)?.content || '',
-            newContent:  f.content,
+            id: f.path,
+            filePath: vscode.workspace.asRelativePath(f.path),
+            fileName: path.basename(f.path),
+            oldContent: files.find(x => x.path === f.path)?.content || '',
+            newContent: f.content,
             description: f.summary || instruction,
           }));
           const { accepted, rejected } = await diffProvider.proposeMultiEdit(edits, instruction);
           vscode.window.showInformationMessage(`DevMind: Applied ${accepted} file(s), skipped ${rejected}.`);
           if (accepted > 0) await autoVerifyIfEnabled();
-        } catch (e: any) { showErr(e); }
+        } catch (e: any) {
+          showErr(e);
+        }
       });
     }),
 
     vscode.commands.registerCommand('devmind.scaffold', async () => {
       const type = await vscode.window.showQuickPick([
-        { label: '$(shield) Auth System',     description: 'JWT register, login, refresh',    id: 'auth'   },
-        { label: '$(cloud) REST API',          description: 'Full CRUD REST endpoint',          id: 'api'    },
-        { label: '$(database) CRUD Module',    description: 'Model, controller, routes',        id: 'crud'   },
-        { label: '$(table) DB Schema',         description: 'Schema with relations',            id: 'schema' },
-        { label: '$(gear) Admin Panel',        description: 'Admin routes and middleware',      id: 'admin'  },
-        { label: '$(server) Express Server',   description: 'Boilerplate server',               id: 'server' },
-        { label: '$(pencil) Custom Module',    description: 'Describe what you need',           id: 'custom' },
+        { label: '$(shield) Auth System', description: 'JWT register, login, refresh', id: 'auth' },
+        { label: '$(cloud) REST API', description: 'Full CRUD REST endpoint', id: 'api' },
+        { label: '$(database) CRUD Module', description: 'Model, controller, routes', id: 'crud' },
+        { label: '$(table) DB Schema', description: 'Schema with relations', id: 'schema' },
+        { label: '$(gear) Admin Panel', description: 'Admin routes and middleware', id: 'admin' },
+        { label: '$(server) Express Server', description: 'Boilerplate server', id: 'server' },
+        { label: '$(pencil) Custom Module', description: 'Describe what you need', id: 'custom' },
       ], { placeHolder: 'What to scaffold?' });
       if (!type) return;
 
       const name = await vscode.window.showInputBox({
-        prompt: `Module name`, placeHolder: 'e.g. user, order, product', ignoreFocusOut: true,
+        prompt: `Module name`,
+        placeHolder: 'e.g. user, order, product',
+        ignoreFocusOut: true,
       });
       if (!name) return;
 
       let extra = '';
       if (type.id === 'custom') {
         extra = await vscode.window.showInputBox({
-          prompt: 'Describe what to generate', ignoreFocusOut: true,
+          prompt: 'Describe what to generate',
+          ignoreFocusOut: true,
         }) || '';
       }
 
-      const proj      = collectProjectContext();
+      const proj = collectProjectContext();
       const ctxPrompt = buildContextPrompt(proj, null);
       await withProgress(`DevMind: Scaffolding ${name} ${type.id}…`, async () => {
         try {
           const scaffoldType = type.id + (extra ? `:${extra}` : '');
-          const result       = await client.scaffold({ type: scaffoldType, name, language: proj.language, projectCtx: ctxPrompt });
-          const wsRoot       = proj.rootPath;
-          const diffProvider = getDiffProvider();
+          const result = await client.scaffold({
+            type: scaffoldType,
+            name,
+            language: proj.language,
+            projectCtx: ctxPrompt,
+          });
+          const wsRoot = proj.rootPath;
 
-          for (const file of result.files) {
-            let oldContent = '';
-            let filePath   = '';
-
-            if (wsRoot) {
-              const fp = path.join(wsRoot, file.path);
-              filePath = vscode.workspace.asRelativePath(fp);
-              try { oldContent = fs.readFileSync(fp, 'utf8'); } catch {}
+          if (!wsRoot) {
+            vscode.window.showWarningMessage('DevMind: No workspace folder found. Opening files in temp documents.');
+            for (const file of result.files) {
+              const d = await vscode.workspace.openTextDocument({
+                content: `// ${file.path}\n${file.content}`,
+                language: proj.language,
+              });
+              await vscode.window.showTextDocument(d, { preview: false });
             }
-
-            // Show diff for existing files, direct write for new ones
-            if (oldContent) {
-              await diffProvider.applyToFileWithDiff(filePath, file.content, `Scaffold ${type.id}: ${name}`);
-            } else {
-              if (wsRoot) {
-                const fp = path.join(wsRoot, file.path);
-                try {
-                  fs.mkdirSync(path.dirname(fp), { recursive: true });
-                  fs.writeFileSync(fp, file.content, 'utf8');
-                  const d = await vscode.workspace.openTextDocument(vscode.Uri.file(fp));
-                  await vscode.window.showTextDocument(d, { preview: false });
-                } catch {
-                  const d = await vscode.workspace.openTextDocument({ content: `// ${file.path}\n${file.content}`, language: proj.language });
-                  await vscode.window.showTextDocument(d, { preview: false });
-                }
-              } else {
-                const d = await vscode.workspace.openTextDocument({ content: `// ${file.path}\n${file.content}`, language: proj.language });
-                await vscode.window.showTextDocument(d, { preview: false });
-              }
-            }
+            return;
           }
 
-          // Re-index after scaffold
+          // Enhanced: Use batch file writing with progress tracking
+          const filesToWrite = result.files.map(f => ({
+            path: f.path,
+            content: f.content,
+          }));
+
+          const writeResults = await writeMultipleFiles(filesToWrite, wsRoot, (current, total, filePath) => {
+            console.log(`[DevMind] Writing file ${current}/${total}: ${filePath}`);
+          });
+
+          // Count successes and failures
+          const successful = writeResults.filter(r => r.success);
+          const failed = writeResults.filter(r => !r.success);
+
+          // Open the first file in editor
+          if (successful.length > 0) {
+            const firstFile = path.join(wsRoot, successful[0].path);
+            await openFileInEditor(firstFile);
+          }
+
+          // Re-index workspace
           getIndexer()?.rebuild();
-          vscode.window.showInformationMessage(`DevMind: Generated ${result.files.length} file(s) for ${name}.`);
+
+          // Show results
+          if (failed.length === 0) {
+            vscode.window.showInformationMessage(
+              `DevMind: Generated ${successful.length} file(s) for ${name}. All files created successfully!`
+            );
+          } else {
+            vscode.window.showWarningMessage(
+              `DevMind: Generated ${successful.length}/${result.files.length} file(s). ${failed.length} file(s) failed.`
+            );
+            console.warn('[DevMind] Failed files:', failed);
+          }
+
           await autoVerifyIfEnabled();
-        } catch (e: any) { showErr(e); }
+        } catch (e: any) {
+          showErr(e);
+        }
       });
     }),
 
-    vscode.commands.registerCommand('devmind.createAuth',   () => quickScaffold('auth',   'auth')),
-    vscode.commands.registerCommand('devmind.createApi',    () => quickScaffold('api',    'api')),
-    vscode.commands.registerCommand('devmind.createCrud',   () => quickScaffold('crud',   'resource')),
+    vscode.commands.registerCommand('devmind.createAuth', () => quickScaffold('auth', 'auth')),
+    vscode.commands.registerCommand('devmind.createApi', () => quickScaffold('api', 'api')),
+    vscode.commands.registerCommand('devmind.createCrud', () => quickScaffold('crud', 'resource')),
     vscode.commands.registerCommand('devmind.createSchema', () => quickScaffold('schema', 'model')),
-    vscode.commands.registerCommand('devmind.createAdmin',  () => quickScaffold('admin',  'admin')),
+    vscode.commands.registerCommand('devmind.createAdmin', () => quickScaffold('admin', 'admin')),
     vscode.commands.registerCommand('devmind.createServer', () => quickScaffold('server', 'server')),
 
     vscode.commands.registerCommand('devmind.indexCodebase', async () => {
@@ -282,8 +430,9 @@ export function activate(context: vscode.ExtensionContext) {
       refreshBar();
     }),
 
-    vscode.commands.registerCommand('devmind.chat',          () => vscode.commands.executeCommand('devmind.chatView.focus')),
+    vscode.commands.registerCommand('devmind.chat', () => vscode.commands.executeCommand('devmind.chatView.focus')),
     vscode.commands.registerCommand('devmind.openDashboard', () => vscode.env.openExternal(vscode.Uri.parse(dashboardUrl))),
+
     vscode.commands.registerCommand('devmind.checkConnection', async () => {
       await withProgress('DevMind: Checking server and login…', async () => {
         const health = await client.health();
@@ -296,30 +445,47 @@ export function activate(context: vscode.ExtensionContext) {
           vscode.window.showWarningMessage('DevMind: Server is up, but API key is invalid/expired. Run DevMind: Set API Key.');
           return;
         }
-        vscode.window.showInformationMessage(`DevMind: Connected. Plan ${String(valid.plan || 'free').toUpperCase()}, ${valid.remaining ?? 0} requests left.`);
+        vscode.window.showInformationMessage(
+          `DevMind: Connected. Plan ${String(valid.plan || 'free').toUpperCase()}, ${valid.remaining ?? 0} requests left.`
+        );
       });
     }),
 
     vscode.commands.registerCommand('devmind.openOnboarding', () => {
       const panel = vscode.window.createWebviewPanel(
-        'devmindOnboarding', 'DevMind — Account',
+        'devmindOnboarding',
+        'DevMind — Account',
         vscode.ViewColumn.Active,
         { enableScripts: true, retainContextWhenHidden: true }
       );
-      const hasKey    = Boolean(vscode.workspace.getConfiguration('devmind').get<string>('apiKey', ''));
-      const inline    = vscode.workspace.getConfiguration('devmind').get<boolean>('enableInline', true);
-      const plan      = usage.getPlan();
+      const hasKey = Boolean(vscode.workspace.getConfiguration('devmind').get<string>('apiKey', ''));
+      const inline = vscode.workspace.getConfiguration('devmind').get<boolean>('enableInline', true);
+      const plan = usage.getPlan();
       const remaining = usage.getRemaining();
-      const files     = getIndexer()?.getFiles().length || 0;
+      const files = getIndexer()?.getFiles().length || 0;
       panel.webview.html = buildOnboardingHtml(hasKey, plan, remaining, inline, files);
       panel.webview.onDidReceiveMessage(async (msg) => {
         switch (msg.type) {
-          case 'openDashboard': await vscode.env.openExternal(vscode.Uri.parse(dashboardUrl)); break;
-          case 'setKey':        await vscode.commands.executeCommand('devmind.setKey'); break;
-          case 'openSidebar':   await vscode.commands.executeCommand('devmind.chatView.focus'); panel.dispose(); break;
-          case 'signOut':       await vscode.commands.executeCommand('devmind.signOut'); panel.dispose(); break;
-          case 'toggleInline':  await vscode.commands.executeCommand('devmind.toggleInline'); break;
-          case 'reindex':       await vscode.commands.executeCommand('devmind.indexCodebase'); break;
+          case 'openDashboard':
+            await vscode.env.openExternal(vscode.Uri.parse(dashboardUrl));
+            break;
+          case 'setKey':
+            await vscode.commands.executeCommand('devmind.setKey');
+            break;
+          case 'openSidebar':
+            await vscode.commands.executeCommand('devmind.chatView.focus');
+            panel.dispose();
+            break;
+          case 'signOut':
+            await vscode.commands.executeCommand('devmind.signOut');
+            panel.dispose();
+            break;
+          case 'toggleInline':
+            await vscode.commands.executeCommand('devmind.toggleInline');
+            break;
+          case 'reindex':
+            await vscode.commands.executeCommand('devmind.indexCodebase');
+            break;
         }
       });
     }),
@@ -327,7 +493,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('devmind.setKey', async () => {
       const key = await vscode.window.showInputBox({
         prompt: 'Paste your DevMind API key (from dashboard → API Keys)',
-        placeHolder: 'dm_...', password: true, ignoreFocusOut: true,
+        placeHolder: 'dm_...',
+        password: true,
+        ignoreFocusOut: true,
       });
       if (!key) return;
       await vscode.workspace.getConfiguration('devmind').update('apiKey', key, true);
@@ -363,7 +531,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (!v.valid) {
         vscode.window.showWarningMessage('DevMind: Stored API key looks invalid. Run DevMind: Set API Key.');
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }
 }
 
@@ -373,19 +541,23 @@ async function runAction(action: 'explain' | 'fix' | 'refactor') {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
   const code = editor.document.getText(editor.selection);
-  if (!code.trim()) { vscode.window.showWarningMessage('DevMind: Select some code first.'); return; }
+  if (!code.trim()) {
+    vscode.window.showWarningMessage('DevMind: Select some code first.');
+    return;
+  }
   const proj = collectProjectContext();
   const file = collectFileContext();
-  const ctx  = buildContextPrompt(proj, file);
+  const ctx = buildContextPrompt(proj, file);
   await withProgress(`DevMind: ${action}ing…`, async () => {
     try {
       const result = await client.action(action, code, file?.language || 'text', ctx);
       if (action === 'fix' || action === 'refactor') {
         const qualityIssues = codeQualityIssues(result, file?.language || 'text');
         if (qualityIssues.length >= 3) {
-          vscode.window.showWarningMessage(`DevMind: quality guard flagged output (${qualityIssues.join(', ')}). Review carefully.`);
+          vscode.window.showWarningMessage(
+            `DevMind: quality guard flagged output (${qualityIssues.join(', ')}). Review carefully.`
+          );
         }
-        // For fix/refactor: show diff and let user accept/reject
         const diffProvider = getDiffProvider();
         const risk = toRiskMarkdown(action, evaluateRisk(code, result));
         await openResult(risk, 'markdown');
@@ -394,23 +566,25 @@ async function runAction(action: 'explain' | 'fix' | 'refactor') {
       } else {
         await openResult(result, action === 'explain' ? 'markdown' : (file?.language || 'text'));
       }
-    } catch (e: any) { showErr(e); }
+    } catch (e: any) {
+      showErr(e);
+    }
   });
 }
 
 async function runGenerate() {
-  const editor    = vscode.window.activeTextEditor;
-  const proj      = collectProjectContext();
-  const file      = collectFileContext();
-  const lang      = file?.language || proj.language || 'typescript';
+  const editor = vscode.window.activeTextEditor;
+  const proj = collectProjectContext();
+  const file = collectFileContext();
+  const lang = file?.language || proj.language || 'typescript';
   const rawPrompt = await vscode.window.showInputBox({
-    prompt:         'Describe what to generate',
-    placeHolder:    'e.g. async function to fetch paginated orders with JWT auth',
+    prompt: 'Describe what to generate',
+    placeHolder: 'e.g. async function to fetch paginated orders with JWT auth',
     ignoreFocusOut: true,
   });
   if (!rawPrompt) return;
   const optimized = optimizePrompt(rawPrompt, proj);
-  const ctx       = buildContextPrompt(proj, file);
+  const ctx = buildContextPrompt(proj, file);
   await withProgress('DevMind: Generating…', async () => {
     try {
       const code = await client.generate(optimized, lang, ctx);
@@ -418,14 +592,15 @@ async function runGenerate() {
       if (qualityIssues.length >= 3) {
         vscode.window.showWarningMessage(`DevMind: generated code quality warning (${qualityIssues.join(', ')}).`);
       }
-      // Use diff flow so user can review before inserting
       const diffProvider = getDiffProvider();
       const baseline = editor?.document.getText() || '';
       const risk = toRiskMarkdown('generate', evaluateRisk(baseline, code));
       await openResult(risk, 'markdown');
       await diffProvider.insertWithDiff(code, rawPrompt);
       await autoVerifyIfEnabled();
-    } catch (e: any) { showErr(e); }
+    } catch (e: any) {
+      showErr(e);
+    }
   });
 }
 
@@ -452,7 +627,9 @@ async function runPlan() {
     try {
       const md = await client.action('explain', planningPrompt, file?.language || proj.language || 'text', ctx);
       await openResult(md, 'markdown');
-    } catch (e: any) { showErr(e); }
+    } catch (e: any) {
+      showErr(e);
+    }
   });
 }
 
@@ -471,7 +648,11 @@ async function runVerifyWorkspace() {
   await withProgress('DevMind: Running verify loop…', async () => {
     for (const item of checks) {
       try {
-        const { stdout, stderr } = await execAsync(item.command, { cwd: item.cwd, timeout: 240_000 });
+        // Enhanced: Extended timeout to 30 minutes
+        const { stdout, stderr } = await execAsync(item.command, {
+          cwd: item.cwd,
+          timeout: EXTENDED_TIMEOUT,
+        });
         results.push({ cwd: item.cwd, command: item.command, ok: true, out: `${stdout}\n${stderr}`.trim() });
       } catch (e: any) {
         const out = `${e?.stdout || ''}\n${e?.stderr || ''}\n${e?.message || ''}`.trim();
@@ -499,16 +680,13 @@ async function runAutoHeal() {
   const ctx = buildContextPrompt(proj, file);
   await withProgress('DevMind: Auto-heal cycle…', async () => {
     try {
-      // Pass 1: fix selected code
       let fixed = await client.action('fix', selected, file?.language || 'text', ctx);
       await getDiffProvider().insertWithDiff(fixed, 'Auto-heal: first fix pass');
-      // Verify
       const first = await runVerifyWorkspaceInternal();
       if (first.failed === 0) {
         vscode.window.showInformationMessage('DevMind: Auto-heal passed on first cycle.');
         return;
       }
-      // Pass 2: feed failures and retry
       const failureText = first.report.slice(0, 4000);
       fixed = await client.action(
         'fix',
@@ -534,10 +712,11 @@ async function runPrSummary() {
   if (!root) return;
   await withProgress('DevMind: Preparing PR summary…', async () => {
     try {
+      // Enhanced: Extended timeout to 30 minutes
       const [status, log, diff] = await Promise.all([
-        execAsync('git status --short', { cwd: root, timeout: 60_000 }),
-        execAsync('git log -8 --oneline', { cwd: root, timeout: 60_000 }),
-        execAsync('git diff -- .', { cwd: root, timeout: 60_000 }),
+        execAsync('git status --short', { cwd: root, timeout: EXTENDED_TIMEOUT }),
+        execAsync('git log -8 --oneline', { cwd: root, timeout: EXTENDED_TIMEOUT }),
+        execAsync('git diff -- .', { cwd: root, timeout: EXTENDED_TIMEOUT }),
       ]);
       const verify = await runVerifyWorkspaceInternal();
       const statusLines = (status.stdout || '(clean)').trim().split('\n').filter(Boolean);
@@ -619,7 +798,11 @@ async function runVerifyWorkspaceInternal(): Promise<{ failed: number; report: s
   const results: Array<{ cwd: string; command: string; ok: boolean; out: string }> = [];
   for (const item of checks) {
     try {
-      const { stdout, stderr } = await execAsync(item.command, { cwd: item.cwd, timeout: 240_000 });
+      // Enhanced: Extended timeout to 30 minutes
+      const { stdout, stderr } = await execAsync(item.command, {
+        cwd: item.cwd,
+        timeout: EXTENDED_TIMEOUT,
+      });
       results.push({ cwd: item.cwd, command: item.command, ok: true, out: `${stdout}\n${stderr}`.trim() });
     } catch (e: any) {
       const out = `${e?.stdout || ''}\n${e?.stderr || ''}\n${e?.message || ''}`.trim();
@@ -642,7 +825,7 @@ function collectVerificationCommands(root: string): Array<{ cwd: string; command
       for (const name of ['lint', 'test', 'build']) {
         if (scripts[name]) checks.push({ cwd: dir, command: `npm run ${name}` });
       }
-    } catch {}
+    } catch { }
   }
   return checks;
 }
@@ -676,28 +859,60 @@ async function autoVerifyIfEnabled() {
   try {
     const pref = await client.getPreferences();
     if (pref?.autoVerify) await runVerifyWorkspace();
-  } catch {}
+  } catch { }
 }
 
 async function quickScaffold(type: string, defaultName: string) {
   const name = await vscode.window.showInputBox({
-    prompt: `Name for the ${type} module`, value: defaultName, ignoreFocusOut: true,
+    prompt: `Name for the ${type} module`,
+    value: defaultName,
+    ignoreFocusOut: true,
   });
   if (!name) return;
-  const proj      = collectProjectContext();
+  const proj = collectProjectContext();
   const ctxPrompt = buildContextPrompt(proj, null);
   await withProgress(`DevMind: Scaffolding ${name}…`, async () => {
     try {
       const result = await client.scaffold({ type, name, language: proj.language, projectCtx: ctxPrompt });
-      for (const file of result.files) {
-        const d = await vscode.workspace.openTextDocument({
-          content: `// ${file.path}\n${file.content}`,
-          language: proj.language,
-        });
-        await vscode.window.showTextDocument(d, { preview: false });
+      const wsRoot = proj.rootPath;
+
+      if (!wsRoot) {
+        for (const file of result.files) {
+          const d = await vscode.workspace.openTextDocument({
+            content: `// ${file.path}\n${file.content}`,
+            language: proj.language,
+          });
+          await vscode.window.showTextDocument(d, { preview: false });
+        }
+        vscode.window.showInformationMessage(`DevMind: ${result.files.length} file(s) generated for ${name} (no workspace).`);
+        return;
       }
-      vscode.window.showInformationMessage(`DevMind: ${result.files.length} file(s) generated for ${name}.`);
-    } catch (e: any) { showErr(e); }
+
+      // Enhanced: Use batch file writing
+      const filesToWrite = result.files.map(f => ({
+        path: f.path,
+        content: f.content,
+      }));
+
+      const writeResults = await writeMultipleFiles(filesToWrite, wsRoot);
+      const successful = writeResults.filter(r => r.success);
+      const failed = writeResults.filter(r => !r.success);
+
+      if (successful.length > 0) {
+        const firstFile = path.join(wsRoot, successful[0].path);
+        await openFileInEditor(firstFile);
+      }
+
+      getIndexer()?.rebuild();
+
+      if (failed.length === 0) {
+        vscode.window.showInformationMessage(`DevMind: ${result.files.length} file(s) generated for ${name}.`);
+      } else {
+        vscode.window.showWarningMessage(`DevMind: ${successful.length}/${result.files.length} file(s) created. ${failed.length} failed.`);
+      }
+    } catch (e: any) {
+      showErr(e);
+    }
   });
 }
 
@@ -719,7 +934,11 @@ function showErr(e: any) {
 
 // ── Onboarding HTML ───────────────────────────────────────────────────────────
 function buildOnboardingHtml(
-  hasApiKey: boolean, plan: string, remaining: number, inline: boolean, fileCount: number
+  hasApiKey: boolean,
+  plan: string,
+  remaining: number,
+  inline: boolean,
+  fileCount: number
 ): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -760,15 +979,15 @@ function buildOnboardingHtml(
 </head>
 <body>
 <div class="card">
-  <div class="badge"><span class="dot"></span> DevMind AI by SinghJitech · v2.2</div>
+  <div class="badge"><span class="dot"></span> DevMind AI by SinghJitech · v2.3</div>
   <h1>${hasApiKey ? 'Account connected' : 'Connect your DevMind account'}</h1>
-  <p class="sub">Full codebase AI — reads all your files, writes directly to editor with accept/reject diff view.</p>
+  <p class="sub">Full codebase AI — reads all your files, writes directly to editor with accept/reject diff view. Now with enhanced file creation & 30min timeout!</p>
 
   ${hasApiKey ? `
   <div class="stat-row">
     <div class="stat"><div class="stat-label">Plan</div><div class="stat-val">${plan.toUpperCase()}</div></div>
     <div class="stat"><div class="stat-label">Requests left</div><div class="stat-val">${remaining}</div></div>
-    <div class="stat"><div class="stat-label">Inline</div><div class="stat-val" style="color:${inline?'#34d399':'#f87171'};font-size:14px">${inline ? 'ON' : 'OFF'}</div></div>
+    <div class="stat"><div class="stat-label">Inline</div><div class="stat-val" style="color:${inline ? '#34d399' : '#f87171'};font-size:14px">${inline ? 'ON' : 'OFF'}</div></div>
     <div class="stat"><div class="stat-label">Files indexed</div><div class="stat-val">${fileCount}</div></div>
   </div>` : ''}
 
@@ -788,6 +1007,8 @@ function buildOnboardingHtml(
         <div class="step"><span class="sn">✦</span><span class="st">Multi-file refactor with side-by-side diff.</span></div>
         <div class="step"><span class="sn">✦</span><span class="st">Inline autocomplete — Tab to accept suggestions.</span></div>
         <div class="step"><span class="sn">✦</span><span class="st">Project-aware — knows your framework, DB, and auth.</span></div>
+        <div class="step"><span class="sn">✨</span><span class="st">NEW: Auto-creates files/directories with atomic writes.</span></div>
+        <div class="step"><span class="sn">⏱️</span><span class="st">NEW: 30-minute timeout for long operations.</span></div>
         `}
       </div>
       <div class="actions">
@@ -816,7 +1037,7 @@ function buildOnboardingHtml(
       </div>
     </div>
   </div>
-  <div class="footer">Aakash Singh, Founder · DevMind AI by SinghJitech · Made in India 🇮🇳</div>
+  <div class="footer">Aakash Singh, Founder · DevMind AI by SinghJitech · Made in India 🇮🇳 · v2.3 Enhanced</div>
 </div>
 <script>
 const vscode = acquireVsCodeApi();
@@ -826,4 +1047,4 @@ function post(t) { vscode.postMessage({ type: t }); }
 </html>`;
 }
 
-export function deactivate() {}
+export function deactivate() { }

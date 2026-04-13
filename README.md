@@ -1,7 +1,7 @@
 # DevMind AI — VS Code Extension
 
 > **The AI coding assistant that actually reads your entire codebase.**  
-> Built for Indian developers. Powered by DeepSeek. Better than Copilot.
+> Multi-model AI architecture optimized for real coding workflows
 
 ---
 
@@ -16,7 +16,20 @@
 | One-command scaffolding | ✅ Auth, CRUD, API, Schema | ❌ | ❌ |
 | Multi-file refactor | ✅ With diff preview | ❌ | ✅ |
 | Gmail OTP login | ✅ Passwordless | ❌ | ❌ |
-| Pricing in INR | ✅ ₹499/mo | ❌ ₹1800+/mo | ❌ ₹1600+/mo |
+| Pricing in INR | ✅ ₹499/mo | ❌ ₹1800+/mo | ❌ ₹1600+/mo || Multi-model routing | ✅ LLM + local models | ❌ | ❌ |
+| Real-time codebase sync | ✅ Live file watching | ❌ | ❌ |
+| Offline mode | ✅ Local model fallback | ❌ | ❌ |
+| Custom prompt library | ✅ Save/share prompts | ❌ | ❌ |
+| Team collaboration | ✅ Shared workspaces | ❌ | ❌ |
+| Code review assistant | ✅ PR comment generation | ❌ | ❌ |
+| Security scanning | ✅ Vulnerability detection | ❌ | ❌ |
+| Performance insights | ✅ Bottleneck analysis | ❌ | ❌ |
+| Verification loop (lint/test/build) | ✅       | ❌       | ❌      |
+| Autonomous auto-heal                | ✅       | ❌       | ❌      |
+| Risk-aware planning                 | ✅       | ❌       | ❌      |
+| PR-ready workflow generation        | ✅       | ❌       | ❌      |
+| Hybrid implement executor           | ✅       | ❌       | ❌      |
+
 
 ---
 
@@ -230,16 +243,6 @@ Type `/` in the chat to see all commands:
 | `devmind.contextLines` | `60` | Lines of context for autocomplete |
 | `devmind.projectAware` | `true` | Auto-detect framework/DB/auth |
 | `devmind.serverUrl` | Production URL | Custom backend URL |
-
----
-
-## Tech Stack
-
-- **AI**: DeepSeek Chat + DeepSeek Coder (model routing per task)
-- **Backend**: Node.js + Express + PostgreSQL
-- **Auth**: Gmail OTP (passwordless, no passwords stored)
-- **Payments**: Razorpay (INR + USD)
-- **Extension**: TypeScript + VS Code API
 
 ---
 
