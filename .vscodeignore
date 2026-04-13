@@ -1,13 +1,21 @@
-.gitignore
+# Exclude everything by default, then whitelist what we need
 .vscode/**
-src/**
-!src/webview/**
-tsconfig.json
-package-lock.json
+.vscode-test/**
+.gitignore
+.git/**
+.claude/**
 *.vsix
-*.log
-devmind-ai-*.vsix
-__pycache__/**
-*.pyc
-.DS_Store
-Thumbs.db
+
+# Exclude TypeScript source files (compiled to dist/)
+src/**
+
+# Exclude node_modules and dev files
+node_modules/**
+**/*.map
+.eslintrc.json
+tsconfig.json
+tsconfig.tsbuildinfo
+
+# NOTE: dist/ is NOT excluded — it contains compiled JS + dist/webview/chat.html
+# NOTE: assets/ is NOT excluded — it contains logo.png
+# NOTE: README.md is NOT excluded — shown in marketplace
