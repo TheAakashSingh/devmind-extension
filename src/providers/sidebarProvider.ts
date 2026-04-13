@@ -182,6 +182,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       scaffold:    'devmind.scaffold',
       verify:      'devmind.verifyWorkspace',
       plan:        'devmind.plan',
+      autoheal:    'devmind.autoHeal',
+      pr:          'devmind.prSummary',
       auth:        'devmind.createAuth',
       crud:        'devmind.createCrud',
       api:         'devmind.createApi',
@@ -266,7 +268,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     // Auto-retrieve top relevant files when user did not explicitly @mention files.
     if (!resolvedMentions.length && indexer) {
-      const autoFiles = indexer.searchFiles(text, 4);
+      const autoFiles = indexer.searchRelevantFiles(text, 4);
       for (const f of autoFiles) {
         const rf = indexer.readFile(f.path);
         if (rf?.content) {

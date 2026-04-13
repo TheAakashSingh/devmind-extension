@@ -30,12 +30,18 @@
     "unit test generator",
     "risk analysis",
     "verification loop",
+    "auto heal",
+    "pr workflow",
+    "team memory",
+    "observability",
     "testing",
     "devmind",
     "augment",
     "cursor",
     "india",
-    "inr"
+    "inr",
+    "usd",
+    "international payments"
   ],
   "icon": "assets/logo.png",
   "galleryBanner": {
@@ -76,6 +82,16 @@
       {
         "command": "devmind.verifyWorkspace",
         "title": "Run Verification Loop (lint/test/build)",
+        "category": "DevMind"
+      },
+      {
+        "command": "devmind.autoHeal",
+        "title": "Auto-Heal (Fix + Verify + Retry)",
+        "category": "DevMind"
+      },
+      {
+        "command": "devmind.prSummary",
+        "title": "Generate PR-Ready Summary",
         "category": "DevMind"
       },
       {

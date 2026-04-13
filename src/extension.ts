@@ -107,6 +107,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('devmind.generate', () => runGenerate()),
     vscode.commands.registerCommand('devmind.plan',     () => runPlan()),
     vscode.commands.registerCommand('devmind.verifyWorkspace', () => runVerifyWorkspace()),
+    vscode.commands.registerCommand('devmind.autoHeal', () => runAutoHeal()),
+    vscode.commands.registerCommand('devmind.prSummary', () => runPrSummary()),
 
     vscode.commands.registerCommand('devmind.explainFile', async () => {
       const editor = vscode.window.activeTextEditor;
@@ -375,6 +377,8 @@ async function runAction(action: 'explain' | 'fix' | 'refactor') {
       if (action === 'fix' || action === 'refactor') {
         // For fix/refactor: show diff and let user accept/reject
         const diffProvider = getDiffProvider();
+        const risk = buildRiskReport(code, result, action);
+        await openResult(risk, 'markdown');
         await diffProvider.insertWithDiff(result, `${action} code`);
         await autoVerifyIfEnabled();
       } else {
@@ -402,6 +406,9 @@ async function runGenerate() {
       const code = await client.generate(optimized, lang, ctx);
       // Use diff flow so user can review before inserting
       const diffProvider = getDiffProvider();
+      const baseline = editor?.document.getText() || '';
+      const risk = buildRiskReport(baseline, code, 'generate');
+      await openResult(risk, 'markdown');
       await diffProvider.insertWithDiff(code, rawPrompt);
       await autoVerifyIfEnabled();
     } catch (e: any) { showErr(e); }
@@ -463,6 +470,138 @@ async function runVerifyWorkspace() {
   const failed = results.filter(r => !r.ok).length;
   if (!failed) vscode.window.showInformationMessage(`DevMind: Verification passed (${results.length} checks).`);
   else vscode.window.showWarningMessage(`DevMind: Verification found ${failed} failing check(s).`);
+}
+
+async function runAutoHeal() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const selected = editor.document.getText(editor.selection);
+  if (!selected.trim()) {
+    vscode.window.showWarningMessage('DevMind: Select code first for auto-heal.');
+    return;
+  }
+  const proj = collectProjectContext();
+  const file = collectFileContext();
+  const ctx = buildContextPrompt(proj, file);
+  await withProgress('DevMind: Auto-heal cycle…', async () => {
+    try {
+      // Pass 1: fix selected code
+      let fixed = await client.action('fix', selected, file?.language || 'text', ctx);
+      await getDiffProvider().insertWithDiff(fixed, 'Auto-heal: first fix pass');
+      // Verify
+      const first = await runVerifyWorkspaceInternal();
+      if (first.failed === 0) {
+        vscode.window.showInformationMessage('DevMind: Auto-heal passed on first cycle.');
+        return;
+      }
+      // Pass 2: feed failures and retry
+      const failureText = first.report.slice(0, 4000);
+      fixed = await client.action(
+        'fix',
+        `${fixed}\n\nFix remaining failures from verification:\n${failureText}`,
+        file?.language || 'text',
+        ctx
+      );
+      await getDiffProvider().insertWithDiff(fixed, 'Auto-heal: retry fix pass');
+      const second = await runVerifyWorkspaceInternal();
+      const msg = second.failed === 0
+        ? 'DevMind: Auto-heal succeeded after retry.'
+        : `DevMind: Auto-heal finished with ${second.failed} remaining failure(s).`;
+      vscode.window.showInformationMessage(msg);
+      await openResult(second.report, 'markdown');
+    } catch (e: any) {
+      showErr(e);
+    }
+  });
+}
+
+async function runPrSummary() {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) return;
+  await withProgress('DevMind: Preparing PR summary…', async () => {
+    try {
+      const [status, log, diff] = await Promise.all([
+        execAsync('git status --short', { cwd: root, timeout: 60_000 }),
+        execAsync('git log -8 --oneline', { cwd: root, timeout: 60_000 }),
+        execAsync('git diff -- .', { cwd: root, timeout: 60_000 }),
+      ]);
+      const summary = [
+        '# PR Summary Draft',
+        '',
+        '## Change overview',
+        '- Describe why this change is needed',
+        '- Mention impacted modules and behavior',
+        '',
+        '## Git status',
+        '```',
+        (status.stdout || '(clean)').trim().slice(0, 2000),
+        '```',
+        '',
+        '## Recent commits',
+        '```',
+        (log.stdout || '').trim().slice(0, 2000),
+        '```',
+        '',
+        '## Diff highlights',
+        '```',
+        (diff.stdout || '').trim().slice(0, 6000),
+        '```',
+        '',
+        '## Test plan checklist',
+        '- [ ] Build passes',
+        '- [ ] Lint passes',
+        '- [ ] Core workflow manually tested',
+        '- [ ] Regression checks completed',
+      ].join('\n');
+      await openResult(summary, 'markdown');
+    } catch (e: any) {
+      showErr(e);
+    }
+  });
+}
+
+function buildRiskReport(before: string, after: string, action: string): string {
+  const b = before || '';
+  const a = after || '';
+  const beforeLines = b.split('\n').length;
+  const afterLines = a.split('\n').length;
+  const delta = Math.abs(afterLines - beforeLines);
+  let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+  if (delta > 80) risk = 'HIGH';
+  else if (delta > 30) risk = 'MEDIUM';
+  const breakingHints = /(rename|remove|delete|public|interface|api|schema|migration)/i.test(a);
+  const blastRadius = delta > 80 ? 'wide' : delta > 30 ? 'medium' : 'focused';
+  const confidence = risk === 'LOW' ? 0.86 : risk === 'MEDIUM' ? 0.68 : 0.49;
+  return [
+    '# Change Risk Report',
+    '',
+    `- Action: **${action}**`,
+    `- Estimated confidence: **${Math.round(confidence * 100)}%**`,
+    `- Risk level: **${risk}**`,
+    `- Blast radius: **${blastRadius}**`,
+    `- Breaking-change flags: **${breakingHints ? 'possible' : 'none detected'}**`,
+    '',
+    '## Notes',
+    '- Review diff before apply.',
+    '- Run verification loop after applying.',
+  ].join('\n');
+}
+
+async function runVerifyWorkspaceInternal(): Promise<{ failed: number; report: string }> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+  const checks = collectVerificationCommands(root);
+  const results: Array<{ cwd: string; command: string; ok: boolean; out: string }> = [];
+  for (const item of checks) {
+    try {
+      const { stdout, stderr } = await execAsync(item.command, { cwd: item.cwd, timeout: 240_000 });
+      results.push({ cwd: item.cwd, command: item.command, ok: true, out: `${stdout}\n${stderr}`.trim() });
+    } catch (e: any) {
+      const out = `${e?.stdout || ''}\n${e?.stderr || ''}\n${e?.message || ''}`.trim();
+      results.push({ cwd: item.cwd, command: item.command, ok: false, out });
+    }
+  }
+  const report = buildVerifyReport(results, root);
+  return { failed: results.filter(r => !r.ok).length, report };
 }
 
 function collectVerificationCommands(root: string): Array<{ cwd: string; command: string }> {

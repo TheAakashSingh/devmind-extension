@@ -92,6 +92,20 @@ Run a full reliability pass directly from DevMind:
 - generates a structured markdown verification report with pass/fail output
 - can auto-run after AI edits when enabled in AI Studio
 
+### ♻ Autonomous Auto-Heal Loop
+DevMind can run a full **fix -> verify -> retry** cycle:
+- first pass fix on selected code
+- run workspace verification (`lint/test/build`)
+- if checks fail, feed failures back for a second fix pass
+- show final verification report
+
+### 📦 PR-Ready Workflow
+Generate a ready-to-edit PR draft with:
+- branch status overview
+- commit context snapshot
+- diff highlights
+- test-plan checklist for reviewers
+
 ### 📋 Risk-Aware Planning
 Use DevMind to generate implementation plans before coding:
 - goals and scope
@@ -147,14 +161,14 @@ Paste your API key. The extension connects immediately and starts indexing your 
 
 ---
 
-## Plans & Pricing (INR)
+## Plans & Pricing (International)
 
-| Plan | Price | Requests/Day | Best For |
-|------|-------|-------------|----------|
-| Free | ₹0 | 20 | Try it out |
-| Solo | ₹499/mo | 100 | Individual developers |
-| Pro | ₹999/mo | 500 | Power users |
-| Team | ₹799/seat/mo | 2000 | Development teams |
+| Plan | INR | USD | Requests/Day | Best For |
+|------|-----|-----|-------------|----------|
+| Free | ₹0 | $0 | 20 | Try it out |
+| Solo | ₹499/mo | $9/mo | 100 | Individual developers |
+| Pro | ₹999/mo | $19/mo | 500 | Power users |
+| Team | ₹799/seat/mo | $15/seat/mo | 2000 | Development teams |
 
 All plans include full codebase indexing, @ mentions, diff view, scaffolding, and multi-file refactor.
 
@@ -175,6 +189,8 @@ Type `/` in the chat to see all commands:
 | `/scaffold` | Open the scaffolding picker |
 | `/plan` | Create risk-aware implementation plan |
 | `/verify` | Run lint/test/build verification loop |
+| `/autoheal` | Run autonomous fix+verify+retry cycle |
+| `/pr` | Generate PR-ready summary + test checklist |
 | `/tree` | Refresh the file tree |
 | `/index` | Re-index the codebase |
 | `/clear` | Clear chat history |
@@ -214,7 +230,7 @@ Type `/` in the chat to see all commands:
 - **AI**: DeepSeek Chat + DeepSeek Coder (model routing per task)
 - **Backend**: Node.js + Express + PostgreSQL
 - **Auth**: Gmail OTP (passwordless, no passwords stored)
-- **Payments**: Razorpay (INR)
+- **Payments**: Razorpay (INR + USD)
 - **Extension**: TypeScript + VS Code API
 
 ---

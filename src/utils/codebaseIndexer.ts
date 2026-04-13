@@ -109,6 +109,34 @@ export class CodebaseIndexer {
     return scored;
   }
 
+  // ── Deeper retrieval: name + path + lightweight content signals ───────────
+  searchRelevantFiles(query: string, limit = 8): CodebaseFile[] {
+    if (!this.index) return [];
+    const q = query.toLowerCase().trim();
+    if (!q) return this.searchFiles('', limit);
+    const tokens = q.split(/[^a-z0-9_]+/i).filter(Boolean).slice(0, 8);
+    const base = this.searchFiles(q, Math.max(limit * 4, 24));
+    const rescored = base.map((f) => {
+      let score = 0;
+      const p = f.path.toLowerCase();
+      const n = f.name.toLowerCase();
+      for (const t of tokens) {
+        if (n.includes(t)) score += 25;
+        if (p.includes(`/${t}`) || p.includes(`${t}/`)) score += 20;
+      }
+      // Lightweight semantic hint from code symbols in file path/name.
+      const symbolish = (f.path.match(/[A-Z][A-Za-z0-9_]+/g) || []).join(' ').toLowerCase();
+      for (const t of tokens) {
+        if (symbolish.includes(t)) score += 12;
+      }
+      if (p.includes('service') && q.includes('service')) score += 10;
+      if (p.includes('controller') && q.includes('api')) score += 10;
+      if (p.includes('route') && q.includes('endpoint')) score += 10;
+      return { file: f, score };
+    });
+    return rescored.sort((a, b) => b.score - a.score).slice(0, limit).map(x => x.file);
+  }
+
   // ── Read a file by relative path ───────────────────────────────────────────
   readFile(relPath: string): { name: string; content: string; language: string } | null {
     if (!this.index) return null;
